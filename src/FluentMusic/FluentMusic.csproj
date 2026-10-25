@@ -21,7 +21,7 @@
         <MauiXamlInflator>SourceGen</MauiXamlInflator>
 
         <!-- Display name -->
-        <ApplicationTitle>FluentMusic</ApplicationTitle>
+        <ApplicationTitle>Fluent Music</ApplicationTitle>
 
         <!-- App Identifier -->
         <ApplicationId>com.fluent.music</ApplicationId>
@@ -36,9 +36,9 @@
 
     <ItemGroup>
         <!-- App Icon -->
-        <MauiIcon Include="Resources\AppIcon\fluent_icon.svg"
-                  ForegroundFile="Resources\AppIcon\fluent_iconfg.svg"
-                  Color="#0D0D0D"/>
+        <MauiIcon Include="Resources\AppIcon\appicon.svg"
+                  ForegroundFile="Resources\AppIcon\appiconfg.svg"
+                  Color="#0D0D0D" />
 
         <!-- Custom Fonts -->
         <MauiFont Include="Resources\Fonts\*"/>
@@ -50,14 +50,12 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.Maui.Controls"/>
         <PackageReference Include="Microsoft.Extensions.Logging.Debug"/>
-        <PackageReference Include="Xamarin.AndroidX.Palette"/>
         <PackageReference Include="CommunityToolkit.Maui.MediaElement"/>
         <PackageReference Include="CommunityToolkit.Maui"/>
         <PackageReference Include="CommunityToolkit.Mvvm"/>
     </ItemGroup>
 
     <ItemGroup>
-        <Folder Include="Features\Playback\Components\"/>
         <Folder Include="Platforms\Android\Resources\AppIcon\" />
         <Folder Include="Platforms\Android\Resources\Images\" />
     </ItemGroup>
