@@ -1,9 +1,9 @@
-﻿using System;
+﻿namespace FluentMusic.Core.Primitives;
+
+using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-
-namespace FluentMusic.Core.Primitives;
 
 [SkipLocalsInit]
 [StructLayout(LayoutKind.Sequential, Size = 1)]

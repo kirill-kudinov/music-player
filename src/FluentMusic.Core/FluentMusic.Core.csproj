@@ -8,8 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Folder Include="Albums\" />
-      <Folder Include="Import\" />
+      <Folder Include="Playback\" />
     </ItemGroup>
 
 </Project>

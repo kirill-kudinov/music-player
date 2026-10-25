@@ -1,15 +1,16 @@
-﻿using System;
+﻿namespace FluentMusic.Core.Primitives;
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace FluentMusic.Core.Primitives;
-
 public readonly struct Option<T> : IEquatable<Option<T>>
 {
     private readonly T? _value;
-    public readonly bool HasValue;
+
+    public bool HasValue { get; }
 
     public bool IsNone
     {
@@ -76,7 +77,7 @@ public static class Option
     public static Option<T> Some<T>(in T? value) =>
         value is not null ? new Option<T>(in value) : Cache<T>.NoneInstance;
 
-    internal static class Cache<T>
+    private static class Cache<T>
     {
         public static readonly Option<T> NoneInstance = default;
     }

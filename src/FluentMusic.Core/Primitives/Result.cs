@@ -1,44 +1,55 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿namespace FluentMusic.Core.Primitives;
+
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
-namespace FluentMusic.Core.Primitives;
-
-internal enum State : byte
+internal enum ResultState : byte
 {
-    Ok,
-    Fail
+    Uninitialized = 0,
+    Ok = 1,
+    Fail = 2
 }
 
 public readonly record struct Result<T>
 {
     private readonly T? _value;
-    private readonly State _state;
+    private readonly ResultState _state;
     private readonly Error _error;
-    public readonly bool IsOk => _state == State.Ok;
-    public readonly bool IsError => _state == State.Fail;
+
+    public bool IsOk
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => _state == ResultState.Ok;
+    }
+
+    public bool IsError
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => _state != ResultState.Ok;
+    }
 
     public Error Error => _state switch
     {
-        State.Ok => Error.None,
-        State.Fail => _error,
-        _ => ResultErrors.NullValue
+        ResultState.Ok => Error.None,
+        ResultState.Fail => _error,
+        _ => ResultErrors.Uninitialized
     };
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal Result(in T? value)
+    internal Result(in T value)
     {
         _value = value;
-        _state = State.Ok;
+        _state = ResultState.Ok;
         _error = Error.None;
     }
-
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal Result(in Error error)
     {
-        _error = error.Code is null ? ResultErrors.NullValue : error; 
-        _state = State.Fail;
+        _value = default;
+        _error = error.IsNone ? ResultErrors.NullValue : error;
+        _state = ResultState.Fail;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -49,35 +60,29 @@ public readonly record struct Result<T>
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static implicit operator Result<T>(FailedResult failedResult) => new(failedResult.Error);
+    public static implicit operator Result<T>(FailedResult failedResult) => new(in failedResult.Error);
 }
 
-public readonly record struct FailedResult
+public readonly record struct FailedResult(Error Error)
 {
-    internal Error Error { get; }
-    internal FailedResult(Error error) => Error = error;
+    internal readonly Error Error = Error;
 }
 
 public static class Result
 {
-    private static readonly Result<Unit> OkUnit = new(Unit.Value);
+    private static readonly Result<Unit> OkUnit = new(in Unit.Value);
+
     public static Task<Result<Unit>> OkTask { get; } = Task.FromResult(OkUnit);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Result<Unit> Ok() => OkUnit;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static FailedResult Fail(in Error error)
-    {
-        return new FailedResult(error);
-    }
+    public static FailedResult Fail(in Error error) => new(error);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Result<T> Ok<T>(in T value)
-    {
-        if (value is null)
-        {
-            return new FailedResult(ResultErrors.NullValue);
-        }
-
-        return new Result<T>(in value);
-    }
+    public static Result<T> Ok<T>(in T value) =>
+        value is null
+            ? new FailedResult(ResultErrors.NullValue)
+            : new Result<T>(in value);
 }
