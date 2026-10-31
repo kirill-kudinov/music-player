@@ -1,4 +1,4 @@
-﻿namespace FluentMusic.Core.Primitives;
+﻿namespace MusicPlayer.Core.Primitives;
 
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;

@@ -1,7 +1,7 @@
 ﻿using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 
-namespace FluentMusic;
+namespace MusicPlayer;
 
 public partial class App : Application
 {

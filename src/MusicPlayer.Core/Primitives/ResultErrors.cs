@@ -1,4 +1,4 @@
-﻿namespace FluentMusic.Core.Primitives;
+﻿namespace MusicPlayer.Core.Primitives;
 
 public static class ResultErrors
 {

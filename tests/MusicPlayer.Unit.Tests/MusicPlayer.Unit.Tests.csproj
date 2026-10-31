@@ -4,7 +4,6 @@
         <ImplicitUsings>disable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <OutputType>Exe</OutputType>
-        <RootNamespace>FluentMusic.Unit.Tests</RootNamespace>
         <TargetFramework>net10.0</TargetFramework>
     </PropertyGroup>
 
@@ -22,7 +21,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\src\FluentMusic.Core\FluentMusic.Core.csproj" />
+      <ProjectReference Include="..\..\src\MusicPlayer.Core\MusicPlayer.Core.csproj" />
     </ItemGroup>
 
 </Project>

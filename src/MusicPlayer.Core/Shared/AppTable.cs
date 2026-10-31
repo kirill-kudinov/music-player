@@ -1,4 +1,4 @@
-namespace FluentMusic.Core.Shared;
+namespace MusicPlayer.Core.Shared;
 
 public enum AppTab : byte
 {

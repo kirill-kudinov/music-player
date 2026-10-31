@@ -1,10 +1,9 @@
 ﻿using System;
-using FluentMusic.Features.Playback;
 using Microsoft.Maui.Accessibility;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Graphics;
 
-namespace FluentMusic;
+namespace MusicPlayer;
 
 public partial class MainPage : ContentPage
 {
@@ -14,9 +13,5 @@ public partial class MainPage : ContentPage
         InitializeComponent();
         
     }
-
-    private void OnCounterClicked(object? sender, EventArgs eventArgs)
-    {
-        
-    }
+    
 }

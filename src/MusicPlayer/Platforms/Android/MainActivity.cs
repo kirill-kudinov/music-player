@@ -2,7 +2,7 @@
 using Android.Content.PM;
 using Microsoft.Maui;
 
-namespace FluentMusic;
+namespace MusicPlayer;
 
 [Activity(Theme = "@style/Maui.SplashTheme", MainLauncher = true, LaunchMode = LaunchMode.SingleTop,
     ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode |

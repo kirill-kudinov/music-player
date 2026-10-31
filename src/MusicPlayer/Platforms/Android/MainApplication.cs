@@ -4,7 +4,7 @@ using Android.Runtime;
 using Microsoft.Maui;
 using Microsoft.Maui.Hosting;
 
-namespace FluentMusic;
+namespace MusicPlayer;
 
 [Application]
 public class MainApplication : MauiApplication

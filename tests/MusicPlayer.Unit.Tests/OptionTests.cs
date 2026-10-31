@@ -1,6 +1,6 @@
-﻿using FluentMusic.Core.Primitives;
+﻿using MusicPlayer.Core.Primitives;
 
-namespace FluentMusic.Unit.Tests;
+namespace MusicPlayer.Unit.Tests;
 
 public class OptionTests
 {

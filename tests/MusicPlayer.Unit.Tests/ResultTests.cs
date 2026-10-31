@@ -1,6 +1,6 @@
-using FluentMusic.Core.Primitives;
+using MusicPlayer.Core.Primitives;
 
-namespace FluentMusic.Unit.Tests;
+namespace MusicPlayer.Unit.Tests;
 
 public class ResultTests
 {
@@ -28,7 +28,7 @@ public class ResultTests
 
             Assert.True(hasValue);
             Assert.True(actual.IsOk);
-            Assert.Equal(FluentMusic.Core.Primitives.Error.None, actual.Error);
+            Assert.Equal(Core.Primitives.Error.None, actual.Error);
             Assert.Equal(ExpectedValue, value);
         }
     }

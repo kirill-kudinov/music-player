@@ -1,6 +1,0 @@
-<Solution>
-  <Project Path="src/FluentMusic/FluentMusic.csproj" />
-  <Project Path="src/FluentMusic.Core/FluentMusic.Core.csproj" />
-  <Project Path="tests/FluentMusic.Unit.Tests/FluentMusic.Unit.Tests.csproj" />
-</Solution>
-
