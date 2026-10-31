@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Scaled & perfectly balanced for round/squircle icon masks -->
+  <g transform="translate(18, 10) scale(0.92)">
+    <!-- Fluid 'f' + note spine -->
+    <path d="M 190 330 
+             C 190 372, 222 395, 258 395 
+             C 300 395, 332 360, 332 312 
+             L 332 185 
+             C 332 135, 368 112, 412 112" 
+          fill="none" 
+          stroke="#FFFFFF" 
+          stroke-width="36" 
+          stroke-linecap="round"/>
+    <!-- Flow wave -->
+    <path d="M 140 275 
+             C 170 245, 215 238, 260 255 
+             C 295 268, 325 268, 358 236" 
+          fill="none" 
+          stroke="#FFFFFF" 
+          stroke-width="26" 
+          stroke-linecap="round" 
+          stroke-opacity="0.85"/>
+  </g>
+</svg>
