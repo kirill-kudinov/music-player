@@ -58,6 +58,7 @@
     <ItemGroup>
         <Folder Include="Platforms\Android\Resources\AppIcon\" />
         <Folder Include="Platforms\Android\Resources\Images\" />
+        <Folder Include="Resources\Splash\" />
     </ItemGroup>
 
     <ItemGroup>
