@@ -8,7 +8,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Folder Include="Playback\" />
+      <Folder Include="Abstractions\" />
+      <Folder Include="Domain\" />
+      <Folder Include="Features\Playback\" />
     </ItemGroup>
 
 </Project>
