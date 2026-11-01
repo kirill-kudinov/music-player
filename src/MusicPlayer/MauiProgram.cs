@@ -11,7 +11,7 @@ public static class MauiProgram
         var builder = MauiApp.CreateBuilder();
         builder.UseMauiApp<App>().ConfigureFonts(fonts =>
         {
-           
+            
         }).UseMauiCommunityToolkit()
             .UseMauiCommunityToolkitMediaElement(false, null);
 #if DEBUG
