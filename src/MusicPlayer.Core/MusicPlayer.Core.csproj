@@ -7,9 +7,4 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
-    <ItemGroup>
-      <Folder Include="Abstractions\" />
-      <Folder Include="Features\Playback\" />
-    </ItemGroup>
-
 </Project>
