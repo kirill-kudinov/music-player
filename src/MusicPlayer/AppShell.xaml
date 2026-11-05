@@ -1,14 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<Shell
-    x:Class="MusicPlayer.AppShell"
-    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:local="clr-namespace:MusicPlayer"
-    xmlns:musicPlayer="clr-namespace:MusicPlayer"
-    Title="MusicPlayerMusic">
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:player="clr-namespace:MusicPlayer.Features.Player"
+       x:Class="MusicPlayer.AppShell">
 
-    <ShellContent
-        ContentTemplate="{DataTemplate musicPlayer:MainPage}"
-        Route="MainPage" />
+    <ShellContent Title="Player"
+                  Route="PlayerPage"
+                  ContentTemplate="{DataTemplate player:PlayerPage}" />
 
 </Shell>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:player="clr-namespace:MusicPlayer.Features.Player"
+             xmlns:components="clr-namespace:MusicPlayer.Features.Player.Components"
+             x:Class="MusicPlayer.Features.Player.PlayerPage"
+             x:DataType="player:PlayerViewModel"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="{StaticResource BgFallback}">
+
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <LinearGradientBrush x:Key="PlayerBackgroundGradientBrush"
+                                 StartPoint="0.5,0"
+                                 EndPoint="0.5,1">
+                <GradientStop Color="{StaticResource BgGradientStart}" Offset="0.0" />
+                <GradientStop Color="{StaticResource BgGradientEnd}" Offset="1.0" />
+            </LinearGradientBrush>
+
+            <!-- Нижний паддинг 80px для удобного расположения под палец -->
+            <Thickness x:Key="PlayerScreenPadding">20,48,20,80</Thickness>
+            <Thickness x:Key="TrackInfoBottomMargin">0,0,0,28</Thickness>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
+    <Grid RowDefinitions="Auto, *, Auto, Auto"
+          Padding="{StaticResource PlayerScreenPadding}"
+          Background="{StaticResource PlayerBackgroundGradientBrush}">
+
+        <!-- 1. Верхняя панель -->
+        <components:PlayerHeaderView Grid.Row="0" />
+
+        <!-- 2. Обложка трека (с темным фолбэком #15151C при отсутствии обложки) -->
+        <components:TrackCoverView Grid.Row="1"
+                                   VerticalOptions="Center" />
+
+        <!-- 3. Название, артист и сердечко -->
+        <components:TrackInfoView Grid.Row="2"
+                                  Margin="{StaticResource TrackInfoBottomMargin}" />
+
+        <!-- 4. Панель управления и слайдер -->
+        <components:PlayerControlsView Grid.Row="3" />
+
+    </Grid>
+</ContentPage>

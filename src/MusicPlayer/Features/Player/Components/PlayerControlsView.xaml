@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             xmlns:player="clr-namespace:MusicPlayer.Features.Player"
+             x:Class="MusicPlayer.Features.Player.Components.PlayerControlsView"
+             x:DataType="player:PlayerViewModel"
+             x:Name="RootView">
+
+    <ContentView.Resources>
+        <ResourceDictionary>
+            <x:Double x:Key="TrackTimeFontSize">12</x:Double>
+            <x:Double x:Key="PlayButtonSize">68</x:Double>
+            <x:Double x:Key="SideButtonSize">44</x:Double>
+
+            <Style x:Key="PlayerSliderStyle" TargetType="Slider">
+                <Setter Property="MinimumTrackColor" Value="{StaticResource SliderActive}" />
+                <Setter Property="MaximumTrackColor" Value="{StaticResource SliderTrackInactive}" />
+                <Setter Property="ThumbColor" Value="{StaticResource SliderActive}" />
+                <Setter Property="Margin" Value="-12,0,-12,0" />
+            </Style>
+
+            <Style x:Key="TrackTimeLabelStyle" TargetType="Label">
+                <Setter Property="FontFamily" Value="Roboto-Regular" />
+                <Setter Property="FontSize" Value="{StaticResource TrackTimeFontSize}" />
+                <Setter Property="TextColor" Value="{StaticResource TextSecondary}" />
+            </Style>
+
+            <Style x:Key="TransportSideButtonStyle" TargetType="Border">
+                <Setter Property="WidthRequest" Value="{StaticResource SideButtonSize}" />
+                <Setter Property="HeightRequest" Value="{StaticResource SideButtonSize}" />
+                <Setter Property="BackgroundColor" Value="Transparent" />
+                <Setter Property="StrokeThickness" Value="0" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="VerticalOptions" Value="Center" />
+                <Setter Property="StrokeShape">
+                    <Setter.Value>
+                        <RoundRectangle CornerRadius="22" />
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="TransportStepButtonStyle" TargetType="Border">
+                <Setter Property="WidthRequest" Value="48" />
+                <Setter Property="HeightRequest" Value="48" />
+                <Setter Property="BackgroundColor" Value="Transparent" />
+                <Setter Property="StrokeThickness" Value="0" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="HorizontalOptions" Value="Center" />
+                <Setter Property="VerticalOptions" Value="Center" />
+                <Setter Property="StrokeShape">
+                    <Setter.Value>
+                        <RoundRectangle CornerRadius="24" />
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="PlayButtonStyle" TargetType="Border">
+                <Setter Property="WidthRequest" Value="{StaticResource PlayButtonSize}" />
+                <Setter Property="HeightRequest" Value="{StaticResource PlayButtonSize}" />
+                <Setter Property="BackgroundColor" Value="{StaticResource White}" />
+                <Setter Property="StrokeThickness" Value="0" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="HorizontalOptions" Value="Center" />
+                <Setter Property="VerticalOptions" Value="Center" />
+            </Style>
+        </ResourceDictionary>
+    </ContentView.Resources>
+
+    <!-- Плоский Grid на 3 строки и 5 колонок -->
+    <Grid RowDefinitions="Auto, Auto, Auto"
+          ColumnDefinitions="44, *, 68, *, 44">
+
+        <!-- СТРОКА 0: Слайдер прогресса (Maximum объявлен перед Minimum согласно документации Microsoft) -->
+        <Slider x:Name="TrackSlider"
+                Grid.Row="0"
+                Grid.Column="0"
+                Grid.ColumnSpan="5"
+                Maximum="{Binding DurationSeconds, FallbackValue=420}"
+                Minimum="0"
+                Value="{Binding PositionSeconds, Mode=OneWay}"
+                Style="{StaticResource PlayerSliderStyle}"
+                DragStartedCommand="{Binding SeekStartedCommand}">
+            <Slider.Behaviors>
+                <toolkit:EventToCommandBehavior EventName="DragCompleted"
+                                                BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
+                                                Command="{Binding SeekCompletedCommand}"
+                                                CommandParameter="{Binding Source={x:Reference TrackSlider}, Path=Value, x:DataType=Slider}" />
+            </Slider.Behaviors>
+        </Slider>
+
+        <!-- СТРОКА 1: Тайминги трека (4:32 и 7:00, Roboto-Regular 12pt) -->
+        <Label Grid.Row="1"
+               Grid.Column="0"
+               Grid.ColumnSpan="2"
+               Text="{Binding Position, StringFormat='{0:m\\:ss}', FallbackValue='4:32'}"
+               Style="{StaticResource TrackTimeLabelStyle}"
+               HorizontalOptions="Start"
+               Margin="0,14,0,0" />
+
+        <Label Grid.Row="1"
+               Grid.Column="3"
+               Grid.ColumnSpan="2"
+               Text="{Binding Duration, StringFormat='{0:m\\:ss}', FallbackValue='7:00'}"
+               Style="{StaticResource TrackTimeLabelStyle}"
+               HorizontalOptions="End"
+               Margin="0,14,0,0" />
+
+        <!-- СТРОКА 2: 5 кнопок управления воспроизведением -->
+
+        <!-- 1. Shuffle -->
+        <Border Grid.Row="2"
+                Grid.Column="0"
+                Style="{StaticResource TransportSideButtonStyle}"
+                HorizontalOptions="Start"
+                Margin="0,27,0,0">
+            <Border.Behaviors>
+                <toolkit:TouchBehavior BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
+                                       Command="{Binding ToggleShuffleCommand}"
+                                       DefaultAnimationDuration="150"
+                                       DefaultAnimationEasing="{x:Static Easing.CubicInOut}"
+                                       DefaultBackgroundColor="Transparent"
+                                       HoveredBackgroundColor="{StaticResource TouchOverlayLight}"
+                                       PressedBackgroundColor="{StaticResource TouchOverlayLight}"
+                                       PressedScale="0.90"
+                                       PressedOpacity="0.75"
+                                       ShouldMakeChildrenInputTransparent="True" />
+            </Border.Behaviors>
+            <Path Data="M16,3 L21,3 L21,8 M4,20 L9,15 L12,15 L21,3 M16,21 L21,21 L21,16 M4,4 L9,9 L11,9 L14,12 L15,13 L21,21"
+                  Stroke="{StaticResource TextPrimary}"
+                  StrokeThickness="2"
+                  StrokeLineCap="Round"
+                  StrokeLineJoin="Round"
+                  WidthRequest="24"
+                  HeightRequest="24"
+                  HorizontalOptions="Center"
+                  VerticalOptions="Center">
+                <Path.Triggers>
+                    <DataTrigger TargetType="Path"
+                                 Binding="{Binding IsShuffleEnabled}"
+                                 Value="True">
+                        <Setter Property="Stroke" Value="{StaticResource TextPrimary}" />
+                    </DataTrigger>
+                    <DataTrigger TargetType="Path"
+                                 Binding="{Binding IsShuffleEnabled}"
+                                 Value="False">
+                        <Setter Property="Stroke" Value="{StaticResource TransportControlInactive}" />
+                    </DataTrigger>
+                </Path.Triggers>
+            </Path>
+        </Border>
+
+        <!-- 2. Previous Track -->
+        <Border Grid.Row="2"
+                Grid.Column="1"
+                Style="{StaticResource TransportStepButtonStyle}"
+                Margin="0,27,0,0">
+            <Border.Behaviors>
+                <toolkit:TouchBehavior BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
+                                       Command="{Binding PreviousTrackCommand}"
+                                       DefaultAnimationDuration="150"
+                                       DefaultAnimationEasing="{x:Static Easing.CubicInOut}"
+                                       DefaultBackgroundColor="Transparent"
+                                       HoveredBackgroundColor="{StaticResource TouchOverlayLight}"
+                                       PressedBackgroundColor="{StaticResource TouchOverlayLight}"
+                                       PressedScale="0.90"
+                                       PressedOpacity="0.75"
+                                       ShouldMakeChildrenInputTransparent="True" />
+            </Border.Behaviors>
+            <Path Data="M3.6667,1.6667 C3.6667,0.7462 2.9205,0 2,0 C1.0796,0 0.3334,0.7462 0.3334,1.6667 V19.6667 C0.3334,20.5871 1.0796,21.3333 2,21.3333 C2.9205,21.3333 3.6667,20.5871 3.6667,19.6667 V1.6667 Z M20.333,1.6 C20.333,0.5333 19.133,-0.1333 18.2,0.5333 L7.267,9.0667 C6.467,9.7333 6.467,11.6 7.267,12.2667 L18.2,20.8 C19.133,21.4667 20.333,20.8 20.333,19.7333 V1.6 Z"
+                  Fill="{StaticResource TextPrimary}"
+                  WidthRequest="21"
+                  HeightRequest="22"
+                  HorizontalOptions="Center"
+                  VerticalOptions="Center" />
+        </Border>
+
+        <!-- 3. Play / Pause (Круг 68x68, rx=34, fill=#FFFFFF, тень dy=10 blur=12.5) -->
+        <Border Grid.Row="2"
+                Grid.Column="2"
+                Style="{StaticResource PlayButtonStyle}"
+                Margin="0,27,0,0">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="34" />
+            </Border.StrokeShape>
+            <Border.Shadow>
+                <Shadow Brush="{StaticResource Black}"
+                        Offset="0,10"
+                        Radius="25"
+                        Opacity="0.25" />
+            </Border.Shadow>
+            <Border.Behaviors>
+                <toolkit:TouchBehavior BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
+                                       Command="{Binding TogglePlayPauseCommand}"
+                                       DefaultAnimationDuration="150"
+                                       DefaultAnimationEasing="{x:Static Easing.CubicInOut}"
+                                       DefaultBackgroundColor="{StaticResource White}"
+                                       HoveredBackgroundColor="{StaticResource TouchOverlayDark}"
+                                       PressedBackgroundColor="{StaticResource TouchOverlayDark}"
+                                       PressedScale="0.94"
+                                       PressedOpacity="0.90"
+                                       ShouldMakeChildrenInputTransparent="True" />
+            </Border.Behaviors>
+
+            <Path Data="M1.7,0.48 C0.9,-0.02 0,0.58 0,1.58 V14.78 C0,15.78 0.9,16.38 1.7,15.88 L12.7,9.28 C13.5,8.78 13.5,7.58 12.7,7.08 L1.7,0.48 Z"
+                  Fill="{StaticResource Black}"
+                  WidthRequest="14"
+                  HeightRequest="16.5"
+                  Margin="3,0,0,0"
+                  HorizontalOptions="Center"
+                  VerticalOptions="Center">
+                <Path.Triggers>
+                    <DataTrigger TargetType="Path"
+                                 Binding="{Binding IsPlaying}"
+                                 Value="False">
+                        <Setter Property="Data" Value="M1.7,0.48 C0.9,-0.02 0,0.58 0,1.58 V14.78 C0,15.78 0.9,16.38 1.7,15.88 L12.7,9.28 C13.5,8.78 13.5,7.58 12.7,7.08 L1.7,0.48 Z" />
+                        <Setter Property="WidthRequest" Value="14" />
+                        <Setter Property="HeightRequest" Value="16.5" />
+                        <Setter Property="Margin" Value="3,0,0,0" />
+                    </DataTrigger>
+                    <DataTrigger TargetType="Path"
+                                 Binding="{Binding IsPlaying}"
+                                 Value="True">
+                        <Setter Property="Data" Value="M2,0 C3.1046,0 4,0.8954 4,2 V14 C4,15.1046 3.1046,16 2,16 C0.8954,16 0,15.1046 0,14 V2 C0,0.8954 0.8954,0 2,0 Z M11,0 C12.1046,0 13,0.8954 13,2 V14 C13,15.1046 12.1046,16 11,16 C9.8954,16 9,15.1046 9,14 V2 C9,0.8954 9.8954,0 11,0 Z" />
+                        <Setter Property="WidthRequest" Value="13" />
+                        <Setter Property="HeightRequest" Value="16" />
+                        <Setter Property="Margin" Value="0" />
+                    </DataTrigger>
+                </Path.Triggers>
+            </Path>
+        </Border>
+
+        <!-- 4. Next Track -->
+        <Border Grid.Row="2"
+                Grid.Column="3"
+                Style="{StaticResource TransportStepButtonStyle}"
+                Margin="0,27,0,0">
+            <Border.Behaviors>
+                <toolkit:TouchBehavior BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
+                                       Command="{Binding NextTrackCommand}"
+                                       DefaultAnimationDuration="150"
+                                       DefaultAnimationEasing="{x:Static Easing.CubicInOut}"
+                                       DefaultBackgroundColor="Transparent"
+                                       HoveredBackgroundColor="{StaticResource TouchOverlayLight}"
+                                       PressedBackgroundColor="{StaticResource TouchOverlayLight}"
+                                       PressedScale="0.90"
+                                       PressedOpacity="0.75"
+                                       ShouldMakeChildrenInputTransparent="True" />
+            </Border.Behaviors>
+            <Path Data="M0,1.6 C0,0.5333 1.2,-0.1333 2.133,0.5333 L13.066,9.0667 C13.866,9.7333 13.866,11.6 13.066,12.2667 L2.133,20.8 C1.2,21.4667 0,20.8 0,19.7333 V1.6 Z M20,1.6667 C20,0.7462 19.254,0 18.333,0 C17.413,0 16.666,0.7462 16.666,1.6667 V19.6667 C16.666,20.5871 17.413,21.3333 18.333,21.3333 C19.254,21.3333 20,20.5871 20,19.6667 V1.6667 Z"
+                  Fill="{StaticResource TextPrimary}"
+                  WidthRequest="21"
+                  HeightRequest="22"
+                  HorizontalOptions="Center"
+                  VerticalOptions="Center" />
+        </Border>
+
+        <!-- 5. Repeat Mode -->
+        <Border Grid.Row="2"
+                Grid.Column="4"
+                Style="{StaticResource TransportSideButtonStyle}"
+                HorizontalOptions="End"
+                Margin="0,27,0,0">
+            <Border.Behaviors>
+                <toolkit:TouchBehavior BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
+                                       Command="{Binding CycleRepeatModeCommand}"
+                                       DefaultAnimationDuration="150"
+                                       DefaultAnimationEasing="{x:Static Easing.CubicInOut}"
+                                       DefaultBackgroundColor="Transparent"
+                                       HoveredBackgroundColor="{StaticResource TouchOverlayLight}"
+                                       PressedBackgroundColor="{StaticResource TouchOverlayLight}"
+                                       PressedScale="0.90"
+                                       PressedOpacity="0.75"
+                                       ShouldMakeChildrenInputTransparent="True" />
+            </Border.Behaviors>
+            <Grid WidthRequest="24"
+                  HeightRequest="24"
+                  HorizontalOptions="Center"
+                  VerticalOptions="Center">
+                <Path Data="M17,2 L21,6 L17,10 M3,12 C3,8.1 6.1,5 10,5 L21,6 M7,22 L3,18 L7,14 M21,12 C21,15.9 17.9,19 14,19 L3,18"
+                      Stroke="{StaticResource TextPrimary}"
+                      StrokeThickness="2"
+                      StrokeLineCap="Round"
+                      StrokeLineJoin="Round">
+                    <Path.Triggers>
+                        <DataTrigger TargetType="Path"
+                                     Binding="{Binding RepeatMode}"
+                                     Value="{x:Static player:PlaybackRepeatMode.Off}">
+                            <Setter Property="Stroke" Value="{StaticResource TransportControlInactive}" />
+                        </DataTrigger>
+                        <DataTrigger TargetType="Path"
+                                     Binding="{Binding RepeatMode}"
+                                     Value="{x:Static player:PlaybackRepeatMode.All}">
+                            <Setter Property="Stroke" Value="{StaticResource TextPrimary}" />
+                        </DataTrigger>
+                        <DataTrigger TargetType="Path"
+                                     Binding="{Binding RepeatMode}"
+                                     Value="{x:Static player:PlaybackRepeatMode.One}">
+                            <Setter Property="Stroke" Value="{StaticResource TextPrimary}" />
+                        </DataTrigger>
+                    </Path.Triggers>
+                </Path>
+
+                <!-- Центральная точка для режима Repeat One (cx=12, cy=12, r=1.8 -> 3.6x3.6) -->
+                <Ellipse WidthRequest="3.6"
+                         HeightRequest="3.6"
+                         Fill="{StaticResource TextPrimary}"
+                         HorizontalOptions="Center"
+                         VerticalOptions="Center"
+                         IsVisible="True">
+                    <Ellipse.Triggers>
+                        <DataTrigger TargetType="Ellipse"
+                                     Binding="{Binding RepeatMode}"
+                                     Value="{x:Static player:PlaybackRepeatMode.Off}">
+                            <Setter Property="IsVisible" Value="False" />
+                        </DataTrigger>
+                        <DataTrigger TargetType="Ellipse"
+                                     Binding="{Binding RepeatMode}"
+                                     Value="{x:Static player:PlaybackRepeatMode.All}">
+                            <Setter Property="IsVisible" Value="False" />
+                        </DataTrigger>
+                        <DataTrigger TargetType="Ellipse"
+                                     Binding="{Binding RepeatMode}"
+                                     Value="{x:Static player:PlaybackRepeatMode.One}">
+                            <Setter Property="IsVisible" Value="True" />
+                        </DataTrigger>
+                    </Ellipse.Triggers>
+                </Ellipse>
+            </Grid>
+        </Border>
+
+    </Grid>
+</ContentView>

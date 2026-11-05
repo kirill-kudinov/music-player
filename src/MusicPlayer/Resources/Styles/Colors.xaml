@@ -1,19 +1,51 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
 
-<ResourceDictionary
-    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+    <!-- Базовые акценты и цвета из SVG-макета FluentMusicDesign.svg -->
+    <Color x:Key="Primary">#7C1919</Color>
+    <Color x:Key="PrimaryDark">#450F12</Color>
+    <Color x:Key="PrimaryDarkText">#FFFFFF</Color>
+    <Color x:Key="Secondary">#0B0B0E</Color>
+    <Color x:Key="SecondaryDarkText">#B3FFFFFF</Color>
+    <Color x:Key="White">#FFFFFF</Color>
+    <Color x:Key="Black">#000000</Color>
+    <Color x:Key="OffBlack">#0B0B0E</Color>
+    <Color x:Key="MidnightBlue">#15151C</Color>
+    <Color x:Key="Magenta">#FF3B30</Color>
 
+    <!-- Нейтральная палитра серых оттенков для темной темы -->
+    <Color x:Key="Gray100">#E1E1E1</Color>
+    <Color x:Key="Gray200">#C8C8C8</Color>
+    <Color x:Key="Gray300">#ACACAC</Color>
+    <Color x:Key="Gray400">#919191</Color>
+    <Color x:Key="Gray500">#6E6E6E</Color>
+    <Color x:Key="Gray600">#404040</Color>
+    <Color x:Key="Gray900">#212121</Color>
+    <Color x:Key="Gray950">#141414</Color>
+
+    <!-- Градиент фона (paint0_linear_0_1: #7C1919 -> #0B0B0E) и поверхности -->
+    <Color x:Key="BgFallback">#1E1E1E</Color>
+    <Color x:Key="BgGradientStart">#7C1919</Color>
+    <Color x:Key="BgGradientEnd">#0B0B0E</Color>
     <Color x:Key="BgCanvas">#0B0B0E</Color>
-    <Color x:Key="BgSurface"></Color>
+    <Color x:Key="BgSurface">#15151C</Color>
     <Color x:Key="PlayerAccentDefaultDefault">#7C1919</Color>
 
-    <Color x:Key="TexPrimary">#FFFFFF</Color>
+    <!-- Типографика -->
+    <Color x:Key="TextPrimary">#FFFFFF</Color>
     <Color x:Key="TextSecondary">#B3FFFFFF</Color>
     <Color x:Key="TextMuted">#99FFFFFF</Color>
-    
+
+    <!-- Интерактивные элементы плеера -->
     <Color x:Key="HeartActive">#FF3B30</Color>
-    <Color x:Key="SliderTrackInactive">#3DFFFFFF</Color>
+    <Color x:Key="HeartInactive">#B3FFFFFF</Color>
+    <Color x:Key="SliderActive">#D9D9D9</Color>
+    <Color x:Key="SliderTrackInactive">#3DD9D9D9</Color>
+    <Color x:Key="TransportControlInactive">#7A7571</Color>
     <Color x:Key="BorderSubtle">#1AFFFFFF</Color>
+    <Color x:Key="TouchOverlayLight">#26FFFFFF</Color>
+    <Color x:Key="TouchOverlayDark">#E6FFFFFF</Color>
     <Color x:Key="PillHandleColor">#4DFFFFFF</Color>
+
 </ResourceDictionary>

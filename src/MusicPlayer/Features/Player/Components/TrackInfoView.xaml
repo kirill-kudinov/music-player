@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             xmlns:player="clr-namespace:MusicPlayer.Features.Player"
+             x:Class="MusicPlayer.Features.Player.Components.TrackInfoView"
+             x:DataType="player:PlayerViewModel"
+             x:Name="RootView">
+
+    <ContentView.Resources>
+        <ResourceDictionary>
+            <x:Double x:Key="TrackTitleFontSize">22</x:Double>
+            <x:Double x:Key="TrackArtistFontSize">15</x:Double>
+
+            <Style x:Key="TrackTitleLabelStyle" TargetType="Label">
+                <Setter Property="FontFamily" Value="Roboto-Bold" />
+                <Setter Property="FontSize" Value="{StaticResource TrackTitleFontSize}" />
+                <Setter Property="TextColor" Value="{StaticResource TextPrimary}" />
+                <Setter Property="LineBreakMode" Value="TailTruncation" />
+            </Style>
+
+            <Style x:Key="TrackArtistLabelStyle" TargetType="Label">
+                <Setter Property="FontFamily" Value="Roboto-Bold" />
+                <Setter Property="FontSize" Value="{StaticResource TrackArtistFontSize}" />
+                <Setter Property="TextColor" Value="{StaticResource TextSecondary}" />
+                <Setter Property="LineBreakMode" Value="TailTruncation" />
+            </Style>
+
+            <Style x:Key="FavoriteButtonStyle" TargetType="Border">
+                <Setter Property="WidthRequest" Value="40" />
+                <Setter Property="HeightRequest" Value="40" />
+                <Setter Property="BackgroundColor" Value="Transparent" />
+                <Setter Property="StrokeThickness" Value="0" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="HorizontalOptions" Value="End" />
+                <Setter Property="VerticalOptions" Value="Center" />
+                <Setter Property="StrokeShape">
+                    <Setter.Value>
+                        <RoundRectangle CornerRadius="20" />
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </ResourceDictionary>
+    </ContentView.Resources>
+
+    <!-- Плоский Grid без вложенных StackLayout -->
+    <Grid RowDefinitions="Auto, Auto"
+          ColumnDefinitions="*, 40"
+          RowSpacing="4"
+          VerticalOptions="Center">
+
+        <!-- Название трека -->
+        <Label Grid.Row="0"
+               Grid.Column="0"
+               Text="{Binding CurrentTrack.Title, FallbackValue='None'}"
+               Style="{StaticResource TrackTitleLabelStyle}" />
+
+        <!-- Исполнитель  -->
+        <Label Grid.Row="1"
+               Grid.Column="0"
+               Text="{Binding CurrentTrack.Artist, FallbackValue='None'}"
+               Style="{StaticResource TrackArtistLabelStyle}" />
+
+        <!-- Кнопка Избранное (Heart: активный #FF3B30, неактивный #B3FFFFFF) -->
+        <Border Grid.Row="0"
+                Grid.RowSpan="2"
+                Grid.Column="1" 
+                Style="{StaticResource FavoriteButtonStyle}">
+            <Border.Behaviors>
+                <toolkit:TouchBehavior BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
+                                       Command="{Binding ToggleFavoriteCommand}"
+                                       DefaultAnimationDuration="150"
+                                       DefaultAnimationEasing="{x:Static Easing.CubicInOut}"
+                                       DefaultBackgroundColor="Transparent"
+                                       HoveredBackgroundColor="{StaticResource TouchOverlayLight}"
+                                       PressedBackgroundColor="{StaticResource TouchOverlayLight}"
+                                       PressedScale="0.88"
+                                       PressedOpacity="0.75"
+                                       ShouldMakeChildrenInputTransparent="True" />
+            </Border.Behaviors>
+
+            <Path Data="M12,21.35 L10.55,20.03 C5.4,15.36 2,12.28 2,8.5 C2,5.42 4.42,3 7.5,3 C9.24,3 10.91,3.81 12,5.09 C13.09,3.81 14.76,3 16.5,3 C19.58,3 22,5.42 22,8.5 C22,12.28 18.6,15.36 13.45,20.04 L12,21.35 Z"
+                  Fill="{StaticResource HeartActive}"
+                  WidthRequest="24"
+                  HeightRequest="24"
+                  HorizontalOptions="Center"
+                  VerticalOptions="Center">
+                <Path.Triggers>
+                    <DataTrigger TargetType="Path"
+                                 Binding="{Binding CurrentTrack.IsFavorite}"
+                                 Value="True">
+                        <Setter Property="Fill" Value="{StaticResource HeartActive}" />
+                    </DataTrigger>
+                    <DataTrigger TargetType="Path"
+                                 Binding="{Binding CurrentTrack.IsFavorite}"
+                                 Value="False">
+                        <Setter Property="Fill" Value="{StaticResource HeartInactive}" />
+                    </DataTrigger>
+                </Path.Triggers>
+            </Path>
+        </Border>
+
+    </Grid>
+</ContentView>
