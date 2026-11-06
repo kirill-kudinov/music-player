@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using MusicPlayer.Core.AudioTracks;
 using MusicPlayer.Core.Primitives;
 
 namespace MusicPlayer.Features.Importer;
@@ -34,5 +36,27 @@ public sealed class TrackStorage(TrackStorageSettings trackStorageSettings)
         await content.CopyToAsync(destinationStream, bufferSize);
 
         return Result.Ok(fullPath);
+    }
+    
+    public List<AudioTrack> GetAllTracks()
+    {
+        if (!Directory.Exists(trackStorageSettings.BaseDirectory)) return [];
+
+        var availableFiles = Directory.GetFiles(trackStorageSettings.BaseDirectory);
+
+        if (availableFiles.Length == 0) return [];
+
+        List<AudioTrack> audioTracks = [];
+
+        foreach (var availableFile in availableFiles)
+        {
+            var createResult = AudioTrack.Create(availableFile);
+
+            if (!createResult.TryGetOk(out var audioTrack)) continue;
+            
+            audioTracks.Add(audioTrack);
+        }
+
+        return audioTracks;
     }
 }

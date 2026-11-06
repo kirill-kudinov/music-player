@@ -454,8 +454,8 @@
     <Style x:Key="MiniPlayerContainerBorderStyle" TargetType="Border">
         <Setter Property="HeightRequest" Value="68" />
         <Setter Property="BackgroundColor" Value="{StaticResource BgSurface}" />
-        <Setter Property="Stroke" Value="{StaticResource BorderSubtle}" />
-        <Setter Property="StrokeThickness" Value="1" />
+        <Setter Property="Stroke" Value="{StaticResource White}" />
+        <Setter Property="StrokeThickness" Value="2" />
         <Setter Property="Padding" Value="12,8" />
         <Setter Property="StrokeShape">
             <Setter.Value>

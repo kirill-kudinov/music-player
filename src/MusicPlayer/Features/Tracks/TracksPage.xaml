@@ -10,7 +10,7 @@
              Shell.NavBarIsVisible="False"
              BackgroundColor="{StaticResource BgCanvas}">
 
-    <Grid RowDefinitions="Auto, *"
+    <Grid RowDefinitions="Auto, Auto, *"
           Padding="16,16,16,0"
           RowSpacing="16">
 
@@ -40,7 +40,7 @@
             </Grid>
         </Border>
 
-       <!-- 2. Список треков -->
+        <!-- 2. Список треков -->
         <CollectionView Grid.Row="1"
                         ItemsSource="{Binding FilteredTracks}"
                         SelectionMode="None"
@@ -54,8 +54,9 @@
                 <DataTemplate x:DataType="tracks:TrackItemViewModel">
                     <Border Style="{StaticResource TrackCardBorderStyle}">
                         <Border.GestureRecognizers>
-                            <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type tracks:TracksViewModel}}, Path=OpenTrackCommand, x:DataType=tracks:TracksViewModel}"
-                                                  CommandParameter="{Binding .}" />
+                            <TapGestureRecognizer
+                                Command="{Binding Source={RelativeSource AncestorType={x:Type tracks:TracksViewModel}}, Path=OpenTrackCommand, x:DataType=tracks:TracksViewModel}"
+                                CommandParameter="{Binding .}" />
                         </Border.GestureRecognizers>
 
                         <Grid ColumnDefinitions="52, *, 40"
@@ -93,8 +94,9 @@
                                     HorizontalOptions="End"
                                     VerticalOptions="Center">
                                 <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type tracks:TracksViewModel}}, Path=ToggleFavoriteCommand, x:DataType=tracks:TracksViewModel}"
-                                                          CommandParameter="{Binding .}" />
+                                    <TapGestureRecognizer
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type tracks:TracksViewModel}}, Path=ToggleFavoriteCommand, x:DataType=tracks:TracksViewModel}"
+                                        CommandParameter="{Binding .}" />
                                 </Border.GestureRecognizers>
 
                                 <Image Style="{StaticResource FavoriteIconImageStyle}"
@@ -122,8 +124,9 @@
 
         <!-- 3. Mini-плеер над нижней панелью навигации -->
         <components:MiniPlayerView Grid.Row="2"
-                                         BindingContext="{Binding Player}"
-                                         Margin="0,0,0,12" />
+                                   BindingContext="{Binding Player}"
+                                   Margin="0,0,0,12"
+                                   VerticalOptions="End" />
 
     </Grid>
 </ContentPage>
