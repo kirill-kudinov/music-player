@@ -7,7 +7,6 @@ namespace MusicPlayer.Core.AudioTracks;
 
 public partial class AudioTrack : ObservableObject
 {
-    public long Id { get; }
     public AudioFormat Format { get; }
     public Uri ContentUri { get; }
 
@@ -24,16 +23,14 @@ public partial class AudioTrack : ObservableObject
     }
 
 
-    [ObservableProperty] 
-    private bool _isFavorite;
-    
+    [ObservableProperty] private bool _isFavorite;
+
     public TimeSpan Duration { get; private set; }
 
     private const string UnknowArtist = "Неизвестный исполнитель";
     private const string Untitled = "Без названия";
 
     private AudioTrack(
-        long id,
         Uri contentUri,
         AudioFormat format,
         string? artist,
@@ -41,7 +38,6 @@ public partial class AudioTrack : ObservableObject
         TimeSpan duration,
         bool isFavorite)
     {
-        Id = id;
         ContentUri = contentUri;
         Format = format;
         Artist = artist;
@@ -72,7 +68,6 @@ public partial class AudioTrack : ObservableObject
 
 
     public static Result<AudioTrack> Create(
-        long id,
         Uri contentUri,
         AudioFormat format,
         string? artist,
@@ -81,14 +76,10 @@ public partial class AudioTrack : ObservableObject
         bool isFavorite = false)
 
     {
-        if (contentUri is null)
-            return Result.Fail(AudioTrackErrors.EmptyContentUri);
-
         if (duration <= TimeSpan.Zero)
             return Result.Fail(AudioTrackErrors.NegativeOrZeroDuration);
 
         return Result.Ok(new AudioTrack(
-            id,
             contentUri,
             format,
             artist,
@@ -100,13 +91,17 @@ public partial class AudioTrack : ObservableObject
 
     public static Result<AudioTrack> Create(string filePath)
     {
-        const long id = 1;
-        var uri = new Uri(filePath);
-        var audioFormat = GetFormat(filePath);
-        var title = Path.GetFileName(filePath);
-        var duration = GetDuration(filePath);
+        var file = TagLib.File.Create(filePath);
 
-        return Create(id, uri, audioFormat, UnknowArtist, title, duration);
+        var uri = new Uri(filePath);
+
+        return Create(
+            uri,
+            GetFormat(filePath),
+            file.Tag.FirstAlbumArtist,
+            Path.GetFileNameWithoutExtension(filePath),
+            file.Properties.Duration
+        );
     }
 
     private static AudioFormat GetFormat(string filePath)
@@ -119,11 +114,5 @@ public partial class AudioTrack : ObservableObject
             ".opus" => AudioFormat.Opus,
             _ => AudioFormat.Unknown
         };
-    }
-
-    private static TimeSpan GetDuration(string filePath)
-    {
-        var file = TagLib.File.Create(filePath);
-        return file.Properties.Duration;
     }
 }
