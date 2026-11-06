@@ -11,4 +11,8 @@
         <PackageReference Include="CommunityToolkit.Mvvm"/>
     </ItemGroup>
     
+    <ItemGroup>
+      <PackageReference Include="TagLibSharp" />
+    </ItemGroup>
+
 </Project>

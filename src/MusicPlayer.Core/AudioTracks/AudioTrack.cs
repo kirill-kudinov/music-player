@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using MusicPlayer.Core.Primitives;
 
@@ -95,5 +96,34 @@ public partial class AudioTrack : ObservableObject
             duration,
             isFavorite
         ));
+    }
+
+    public static Result<AudioTrack> Create(string filePath)
+    {
+        const long id = 1;
+        var uri = new Uri(filePath);
+        var audioFormat = GetFormat(filePath);
+        var title = Path.GetFileName(filePath);
+        var duration = GetDuration(filePath);
+
+        return Create(id, uri, audioFormat, UnknowArtist, title, duration);
+    }
+
+    private static AudioFormat GetFormat(string filePath)
+    {
+        return Path.GetExtension(filePath) switch
+        {
+            ".aac" => AudioFormat.Aac,
+            ".flac" => AudioFormat.Flac,
+            ".ogg" => AudioFormat.Ogg,
+            ".opus" => AudioFormat.Opus,
+            _ => AudioFormat.Unknown
+        };
+    }
+
+    private static TimeSpan GetDuration(string filePath)
+    {
+        var file = TagLib.File.Create(filePath);
+        return file.Properties.Duration;
     }
 }

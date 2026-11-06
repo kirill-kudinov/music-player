@@ -3,8 +3,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Controls.Hosting;
 using Microsoft.Maui.Hosting;
+using MusicPlayer.Features.Importer;
 using MusicPlayer.Features.Player;
 using MusicPlayer.Playback;
+using ImportViewModel = MusicPlayer.Features.Importer.ImportViewModel;
 
 namespace MusicPlayer;
 
@@ -29,9 +31,16 @@ public static class MauiProgram
         builder.Services.AddSingleton<ITrackCoverExtractor, AndroidTrackCoverExtractor>();
 #endif
         builder.Services.AddSingleton<IPlaybackQueue, PlaybackQueue>();
+        builder.Services.AddSingleton<TrackStorageSettings>();
+        builder.Services.AddSingleton<TrackStorage>();
+        builder.Services.AddSingleton<TrackPicker>();
 
         builder.Services.AddTransient<PlayerViewModel>();
         builder.Services.AddTransient<PlayerPage>();
+
+        builder.Services.AddTransient<ImportViewModel>();
+        builder.Services.AddTransient<ImportPage>();
+
 
 #if DEBUG
         builder.Logging.AddDebug();
