@@ -4,9 +4,8 @@
              xmlns:player="clr-namespace:MusicPlayer.Features.Player"
              x:Class="MusicPlayer.Features.Player.Components.TrackCoverView"
              x:DataType="player:PlayerViewModel">
-    
 
-    <!-- Если TrackCover == null, отображается темная плашка #15151C со скруглением 20px и рамкой #1AFFFFFF -->
+    <!-- Если TrackCover == null, отображается темная обложка-фолбэк #15151C с рамкой #1AFFFFFF -->
     <Border Style="{StaticResource PlayerCoverBorderStyle}">
         <Border.StrokeShape>
             <RoundRectangle CornerRadius="20" />

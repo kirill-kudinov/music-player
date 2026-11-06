@@ -7,6 +7,10 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
+    <ItemGroup> 
+        <PackageReference Include="CommunityToolkit.Mvvm"/>
+    </ItemGroup>
+    
     <ItemGroup>
       <PackageReference Include="TagLibSharp" />
     </ItemGroup>

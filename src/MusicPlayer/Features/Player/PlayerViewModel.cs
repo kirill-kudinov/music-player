@@ -1,17 +1,10 @@
 using System;
-using System.Diagnostics;
-using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Maui.Controls;
 using MusicPlayer.Core.AudioTracks;
 using MusicPlayer.Playback;
-using AudioTrack = MusicPlayer.Core.AudioTracks.AudioTrack;
-#if ANDROID
-using Android.Media;
-using Application = Android.App.Application;
-#endif
 
 namespace MusicPlayer.Features.Player;
 
@@ -19,6 +12,7 @@ public sealed partial class PlayerViewModel : ObservableObject
 {
     private readonly IAudioPlayer _player;
     private readonly IPlaybackQueue _queue;
+    private readonly ITrackCoverExtractor _coverExtractor;
 
     private bool _isUserSeeking;
 
@@ -26,6 +20,7 @@ public sealed partial class PlayerViewModel : ObservableObject
     private string _playContextTitle = "Плейлист «Избранное»";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCurrentTrackFavorite))]
     private AudioTrack? _currentTrack;
 
     [ObservableProperty]
@@ -48,23 +43,28 @@ public sealed partial class PlayerViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(DurationSeconds))]
     private TimeSpan _duration;
 
+    public bool IsCurrentTrackFavorite => CurrentTrack?.IsFavorite ?? false;
     public double PositionSeconds => Position.TotalSeconds;
     public double DurationSeconds => Duration.TotalSeconds > 0 ? Duration.TotalSeconds : 1.0;
 
     public bool CanSkipNext => _queue.HasNext;
     public bool CanSkipPrevious => _queue.HasPrevious;
 
-    public PlayerViewModel(IAudioPlayer player, IPlaybackQueue queue)
+    public PlayerViewModel(
+        IAudioPlayer player,
+        IPlaybackQueue queue,
+        ITrackCoverExtractor coverExtractor)
     {
         _player = player;
         _queue = queue;
+        _coverExtractor = coverExtractor;
 
         SyncState();
     }
 
     partial void OnCurrentTrackChanged(AudioTrack? value)
     {
-        TrackCover = ExtractTrackCover(value?.ContentUri);
+        TrackCover = _coverExtractor.ExtractCover(value?.ContentUri);
     }
 
     public void Tick()
@@ -131,6 +131,7 @@ public sealed partial class PlayerViewModel : ObservableObject
 
         CurrentTrack.ToggleFavorite();
         OnPropertyChanged(nameof(CurrentTrack));
+        OnPropertyChanged(nameof(IsCurrentTrackFavorite));
     }
 
     [RelayCommand]
@@ -170,53 +171,5 @@ public sealed partial class PlayerViewModel : ObservableObject
 
         NextTrackCommand.NotifyCanExecuteChanged();
         PreviousTrackCommand.NotifyCanExecuteChanged();
-    }
-
-    private static ImageSource? ExtractTrackCover(Uri? contentUri)
-    {
-        if (contentUri is null)
-            return null;
-
-#if ANDROID
-        using var retriever = new MediaMetadataRetriever();
-        try
-        {
-            if (contentUri.IsFile && File.Exists(contentUri.LocalPath))
-            {
-                retriever.SetDataSource(contentUri.LocalPath);
-            }
-            else
-            {
-                var androidUri = Android.Net.Uri.Parse(contentUri.ToString());
-                if (androidUri is null)
-                    return null;
-
-                retriever.SetDataSource(Application.Context, androidUri);
-            }
-
-            byte[]? coverBytes = retriever.GetEmbeddedPicture();
-            if (coverBytes is { Length: > 0 })
-            {
-                return ImageSource.FromStream(() => new MemoryStream(coverBytes));
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[PlayerViewModel] Ошибка извлечения обложки: {ex.Message}");
-        }
-        finally
-        {
-            try
-            {
-                retriever.Release();
-            }
-            catch
-            {
-                // Игнорируем ошибки освобождения нативного ресурса
-            }
-        }
-#endif
-
-        return null;
     }
 }
