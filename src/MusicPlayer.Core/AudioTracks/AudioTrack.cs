@@ -1,9 +1,10 @@
 using System;
+using CommunityToolkit.Mvvm.ComponentModel;
 using MusicPlayer.Core.Primitives;
 
 namespace MusicPlayer.Core.AudioTracks;
 
-public sealed class AudioTrack
+public partial class AudioTrack : ObservableObject
 {
     public long Id { get; }
     public AudioFormat Format { get; }
@@ -22,7 +23,9 @@ public sealed class AudioTrack
     }
 
 
-    public bool IsFavorite { get; private set; }
+    [ObservableProperty] 
+    private bool _isFavorite;
+    
     public TimeSpan Duration { get; private set; }
 
     private const string UnknowArtist = "Неизвестный исполнитель";

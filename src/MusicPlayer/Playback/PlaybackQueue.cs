@@ -6,7 +6,7 @@ using MusicPlayer.Features.Player;
 
 namespace MusicPlayer.Playback;
 
-public sealed class PlaybackQueue : IPlaybackQueue
+public partial class PlaybackQueue : IPlaybackQueue
 {
     private readonly List<AudioTrack> _originalTracks = [];
     private readonly List<AudioTrack> _playbackTracks = [];

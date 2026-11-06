@@ -7,42 +7,13 @@
              x:DataType="player:PlayerViewModel"
              x:Name="RootView">
 
-    <ContentView.Resources>
-        <ResourceDictionary>
-            <x:Double x:Key="HeaderTitleFontSize">12</x:Double>
-
-            <Style x:Key="HeaderIconButtonStyle" TargetType="Border">
-                <Setter Property="WidthRequest" Value="40" />
-                <Setter Property="HeightRequest" Value="40" />
-                <Setter Property="BackgroundColor" Value="Transparent" />
-                <Setter Property="StrokeThickness" Value="0" />
-                <Setter Property="Padding" Value="0" />
-                <Setter Property="StrokeShape">
-                    <Setter.Value>
-                        <RoundRectangle CornerRadius="20" />
-                    </Setter.Value>
-                </Setter>
-            </Style>
-
-            <Style x:Key="HeaderTitleLabelStyle" TargetType="Label">
-                <Setter Property="FontFamily" Value="Roboto-Bold" />
-                <Setter Property="FontSize" Value="{StaticResource HeaderTitleFontSize}" />
-                <Setter Property="TextColor" Value="{StaticResource TextPrimary}" />
-                <Setter Property="HorizontalOptions" Value="Center" />
-                <Setter Property="VerticalOptions" Value="Center" />
-                <Setter Property="HorizontalTextAlignment" Value="Center" />
-                <Setter Property="LineBreakMode" Value="TailTruncation" />
-            </Style>
-        </ResourceDictionary>
-    </ContentView.Resources>
-
     <Grid ColumnDefinitions="40, *, 40"
           HeightRequest="40"
           VerticalOptions="Center">
 
-        <!-- Кнопка свернуть плеер (Chevron Down: d="M34 65L40 71L46 65") -->
+        <!-- Свернуть плеер (Resources/Images/player_chevron_down.svg) -->
         <Border Grid.Column="0"
-                Style="{StaticResource HeaderIconButtonStyle}">
+                Style="{StaticResource PlayerIconButtonStyle}">
             <Border.Behaviors>
                 <toolkit:TouchBehavior BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
                                        Command="{Binding CollapseCommand}"
@@ -55,26 +26,19 @@
                                        PressedOpacity="0.75"
                                        ShouldMakeChildrenInputTransparent="True" />
             </Border.Behaviors>
-            <Path Data="M6,9 L12,15 L18,9"
-                  Stroke="{StaticResource TextPrimary}"
-                  StrokeThickness="2.2"
-                  StrokeLineCap="Round"
-                  StrokeLineJoin="Round"
-                  WidthRequest="24"
-                  HeightRequest="24"
-                  HorizontalOptions="Center"
-                  VerticalOptions="Center" />
+            <Image Source="player_chevron_down.png"
+                   Style="{StaticResource PlayerStaticIconImageStyle}" />
         </Border>
 
-        <!-- Заголовок контекста воспроизведения ("Плейлист «Избранное»") -->
+        <!-- Заголовок плейлиста -->
         <Label Grid.Column="1"
                Text="{Binding PlayContextTitle}"
-               Style="{StaticResource HeaderTitleLabelStyle}"
+               Style="{StaticResource PlayerHeaderTitleStyle}"
                Margin="8,0" />
 
-        <!-- Кнопка очереди воспроизведения (Queue Icon: 3 линии + круг r=2.5) -->
+        <!-- Очередь воспроизведения (Resources/Images/player_queue.svg) -->
         <Border Grid.Column="2"
-                Style="{StaticResource HeaderIconButtonStyle}">
+                Style="{StaticResource PlayerIconButtonStyle}">
             <Border.Behaviors>
                 <toolkit:TouchBehavior BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
                                        Command="{Binding OpenQueueCommand}"
@@ -87,23 +51,8 @@
                                        PressedOpacity="0.75"
                                        ShouldMakeChildrenInputTransparent="True" />
             </Border.Behaviors>
-            <Grid WidthRequest="24"
-                  HeightRequest="24"
-                  HorizontalOptions="Center"
-                  VerticalOptions="Center">
-                <Path Data="M4,6 H20 M4,12 H16 M4,18 H11"
-                      Stroke="{StaticResource TextPrimary}"
-                      StrokeThickness="2"
-                      StrokeLineCap="Round" />
-                <Ellipse WidthRequest="5"
-                         HeightRequest="5"
-                         Fill="{StaticResource TextPrimary}"
-                         Stroke="{StaticResource TextPrimary}"
-                         StrokeThickness="2"
-                         HorizontalOptions="Start"
-                         VerticalOptions="Start"
-                         Margin="15,15,0,0" />
-            </Grid>
+            <Image Source="player_queue.png"
+                   Style="{StaticResource PlayerStaticIconImageStyle}" />
         </Border>
 
     </Grid>
