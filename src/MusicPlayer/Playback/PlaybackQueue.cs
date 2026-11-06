@@ -39,7 +39,10 @@ public partial class PlaybackQueue : IPlaybackQueue
 
     public void SetTracks(IReadOnlyCollection<AudioTrack> tracks, AudioTrack current)
     {
-        _playbackQueueImplementation.SetTracks(tracks, current);
+        _originalTracks.Clear();
+        _originalTracks.AddRange(tracks);
+
+        RebuildPlaybackList(current);
     }
 
     public AudioTrack? MoveNext()

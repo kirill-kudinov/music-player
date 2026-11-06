@@ -1,12 +1,81 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
        xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-       xmlns:player="clr-namespace:MusicPlayer.Features.Player"
+       xmlns:tracks="clr-namespace:MusicPlayer.Features.Tracks"
+       xmlns:playlist="clr-namespace:MusicPlayer.Features.Playlist"
        xmlns:importer="clr-namespace:MusicPlayer.Features.Importer"
-       x:Class="MusicPlayer.AppShell">
+       x:Class="MusicPlayer.AppShell"
+       Shell.NavBarIsVisible="False">
 
-    <ShellContent Title="Player"
-                  Route="ImportPage"
-                  ContentTemplate="{DataTemplate importer:ImportPage}" />
+    <TabBar>
+        <!-- 1. Вкладка «Треки» -->
+        <ShellContent Title="Треки"
+                      Route="TracksPage"
+                      ContentTemplate="{DataTemplate tracks:TracksPage}">
+            <ShellContent.Style>
+                <Style TargetType="ShellContent">
+                    <Setter Property="Icon" Value="tab_tracks_inactive.png" />
+                    <Style.Triggers>
+                        <DataTrigger TargetType="ShellContent"
+                                     Binding="{Binding Source={RelativeSource Self}, Path=IsChecked, x:DataType=ShellContent}"
+                                     Value="True">
+                            <Setter Property="Icon" Value="tab_tracks_active.png" />
+                        </DataTrigger>
+                        <DataTrigger TargetType="ShellContent"
+                                     Binding="{Binding Source={RelativeSource Self}, Path=IsChecked, x:DataType=ShellContent}"
+                                     Value="False">
+                            <Setter Property="Icon" Value="tab_tracks_inactive.png" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ShellContent.Style>
+        </ShellContent>
+
+        <!-- 2. Вкладка «Плейлисты» -->
+        <ShellContent Title="Плейлисты"
+                      Route="PlaylistPage"
+                      ContentTemplate="{DataTemplate playlist:PlaylistPage}">
+            <ShellContent.Style>
+                <Style TargetType="ShellContent">
+                    <Setter Property="Icon" Value="tab_playlists_inactive.png" />
+                    <Style.Triggers>
+                        <DataTrigger TargetType="ShellContent"
+                                     Binding="{Binding Source={RelativeSource Self}, Path=IsChecked, x:DataType=ShellContent}"
+                                     Value="True">
+                            <Setter Property="Icon" Value="tab_playlists_active.png" />
+                        </DataTrigger>
+                        <DataTrigger TargetType="ShellContent"
+                                     Binding="{Binding Source={RelativeSource Self}, Path=IsChecked, x:DataType=ShellContent}"
+                                     Value="False">
+                            <Setter Property="Icon" Value="tab_playlists_inactive.png" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ShellContent.Style>
+        </ShellContent>
+
+        <!-- 3. Вкладка «Импорт» -->
+        <ShellContent Title="Импорт"
+                      Route="ImportPage"
+                      ContentTemplate="{DataTemplate importer:ImportPage}">
+            <ShellContent.Style>
+                <Style TargetType="ShellContent">
+                    <Setter Property="Icon" Value="tab_import_inactive.png" />
+                    <Style.Triggers>
+                        <DataTrigger TargetType="ShellContent"
+                                     Binding="{Binding Source={RelativeSource Self}, Path=IsChecked, x:DataType=ShellContent}"
+                                     Value="True">
+                            <Setter Property="Icon" Value="tab_import_active.png" />
+                        </DataTrigger>
+                        <DataTrigger TargetType="ShellContent"
+                                     Binding="{Binding Source={RelativeSource Self}, Path=IsChecked, x:DataType=ShellContent}"
+                                     Value="False">
+                            <Setter Property="Icon" Value="tab_import_inactive.png" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ShellContent.Style>
+        </ShellContent>
+    </TabBar>
 
 </Shell>

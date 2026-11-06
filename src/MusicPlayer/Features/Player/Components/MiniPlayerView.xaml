@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             xmlns:player="clr-namespace:MusicPlayer.Features.Player"
+             x:Class="MusicPlayer.Features.Player.Components.MiniPlayerView"
+             x:DataType="player:PlayerViewModel"
+             x:Name="RootView"
+             IsVisible="{Binding HasCurrentTrack}">
+
+    <Border Style="{StaticResource MiniPlayerContainerBorderStyle}">
+        <Border.GestureRecognizers>
+            <TapGestureRecognizer Command="{Binding ExpandCommand}" />
+        </Border.GestureRecognizers>
+
+        <Grid ColumnDefinitions="48, *, 40, 40"
+              ColumnSpacing="12"
+              VerticalOptions="Center">
+
+            <!-- 1. Обложка трека (48x48, скругление 10px, темный фолбэк при отсутствии обложки) -->
+            <Border Grid.Column="0"
+                    Style="{StaticResource MiniPlayerCoverBorderStyle}"
+                    InputTransparent="True">
+                <Image Source="{Binding TrackCover}"
+                       Aspect="AspectFill"
+                       HorizontalOptions="Fill"
+                       VerticalOptions="Fill" />
+            </Border>
+
+            <!-- 2. Название трека и исполнитель -->
+            <Grid Grid.Column="1"
+                  RowDefinitions="Auto, Auto"
+                  RowSpacing="2"
+                  VerticalOptions="Center"
+                  InputTransparent="True">
+                <Label Grid.Row="0"
+                       Text="{Binding CurrentTrack.Title}"
+                       Style="{StaticResource TrackItemTitleLabelStyle}" />
+
+                <Label Grid.Row="1"
+                       Text="{Binding CurrentTrack.Artist}"
+                       Style="{StaticResource TrackItemSubtitleLabelStyle}" />
+            </Grid>
+
+            <!-- 3. Кнопка паузы / воспроизведения -->
+            <Border Grid.Column="2"
+                    Style="{StaticResource PlayerIconButtonStyle}"
+                    VerticalOptions="Center">
+                <Border.Behaviors>
+                    <toolkit:TouchBehavior BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
+                                           Command="{Binding TogglePlayPauseCommand}"
+                                           DefaultAnimationDuration="150"
+                                           DefaultAnimationEasing="{x:Static Easing.CubicInOut}"
+                                           DefaultBackgroundColor="Transparent"
+                                           HoveredBackgroundColor="{StaticResource TouchOverlayLight}"
+                                           PressedBackgroundColor="{StaticResource TouchOverlayLight}"
+                                           PressedScale="0.88"
+                                           PressedOpacity="0.75"
+                                           ShouldMakeChildrenInputTransparent="True" />
+                </Border.Behaviors>
+
+                <Image Style="{StaticResource MiniPlayerPlayPauseImageStyle}">
+                    <Image.Behaviors>
+                        <toolkit:IconTintColorBehavior TintColor="{StaticResource White}" />
+                    </Image.Behaviors>
+                    <Image.Triggers>
+                        <DataTrigger TargetType="Image"
+                                     Binding="{Binding IsPlaying}"
+                                     Value="False">
+                            <Setter Property="Source" Value="player_play.png" />
+                        </DataTrigger>
+                        <DataTrigger TargetType="Image"
+                                     Binding="{Binding IsPlaying}"
+                                     Value="True">
+                            <Setter Property="Source" Value="player_pause.png" />
+                        </DataTrigger>
+                    </Image.Triggers>
+                </Image>
+            </Border>
+
+            <!-- 4. Кнопка следующего трека -->
+            <Border Grid.Column="3"
+                    Style="{StaticResource PlayerIconButtonStyle}"
+                    VerticalOptions="Center">
+                <Border.Behaviors>
+                    <toolkit:TouchBehavior BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
+                                           Command="{Binding NextTrackCommand}"
+                                           DefaultAnimationDuration="150"
+                                           DefaultAnimationEasing="{x:Static Easing.CubicInOut}"
+                                           DefaultBackgroundColor="Transparent"
+                                           HoveredBackgroundColor="{StaticResource TouchOverlayLight}"
+                                           PressedBackgroundColor="{StaticResource TouchOverlayLight}"
+                                           PressedScale="0.88"
+                                           PressedOpacity="0.75"
+                                           ShouldMakeChildrenInputTransparent="True" />
+                </Border.Behaviors>
+
+                <Image Source="player_next.png"
+                       Style="{StaticResource MiniPlayerStaticIconImageStyle}" />
+            </Border>
+
+        </Grid>
+    </Border>
+</ContentView>

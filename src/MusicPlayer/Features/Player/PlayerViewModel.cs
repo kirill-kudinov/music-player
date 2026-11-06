@@ -21,6 +21,7 @@ public sealed partial class PlayerViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsCurrentTrackFavorite))]
+    [NotifyPropertyChangedFor(nameof(HasCurrentTrack))]
     private AudioTrack? _currentTrack;
 
     [ObservableProperty]
@@ -43,6 +44,7 @@ public sealed partial class PlayerViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(DurationSeconds))]
     private TimeSpan _duration;
 
+    public bool HasCurrentTrack => CurrentTrack is not null;
     public bool IsCurrentTrackFavorite => CurrentTrack?.IsFavorite ?? false;
     public double PositionSeconds => Position.TotalSeconds;
     public double DurationSeconds => Duration.TotalSeconds > 0 ? Duration.TotalSeconds : 1.0;
@@ -67,6 +69,12 @@ public sealed partial class PlayerViewModel : ObservableObject
         TrackCover = _coverExtractor.ExtractCover(value?.ContentUri);
     }
 
+    public void NotifyTrackStarted()
+    {
+        SyncState();
+        IsPlaying = true;
+    }
+
     public void Tick()
     {
         if (IsPlaying != _player.IsPlaying)
@@ -83,6 +91,9 @@ public sealed partial class PlayerViewModel : ObservableObject
     private static async Task CollapseAsync() => await Shell.Current.GoToAsync("..");
 
     [RelayCommand]
+    private static async Task ExpandAsync() => await Shell.Current.GoToAsync(nameof(PlayerPage));
+
+    [RelayCommand]
     private static Task OpenQueueAsync() => Task.CompletedTask;
 
     [RelayCommand]
@@ -91,6 +102,7 @@ public sealed partial class PlayerViewModel : ObservableObject
         if (_player.IsPlaying)
         {
             _player.Pause();
+            IsPlaying = false;
         }
         else
         {
@@ -98,9 +110,9 @@ public sealed partial class PlayerViewModel : ObservableObject
                 _player.Play(_queue.CurrentTrack.ContentUri);
             else
                 _player.Resume();
-        }
 
-        IsPlaying = _player.IsPlaying;
+            IsPlaying = true;
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanSkipNext))]
@@ -108,7 +120,12 @@ public sealed partial class PlayerViewModel : ObservableObject
     {
         var next = _queue.MoveNext();
         if (next is not null)
+        {
             _player.Play(next.ContentUri);
+            SyncState();
+            IsPlaying = true;
+            return;
+        }
 
         SyncState();
     }
@@ -118,7 +135,12 @@ public sealed partial class PlayerViewModel : ObservableObject
     {
         var prev = _queue.MovePrevious();
         if (prev is not null)
+        {
             _player.Play(prev.ContentUri);
+            SyncState();
+            IsPlaying = true;
+            return;
+        }
 
         SyncState();
     }
