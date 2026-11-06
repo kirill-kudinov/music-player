@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using Microsoft.Maui.Controls;
@@ -11,11 +12,23 @@ namespace MusicPlayer.Playback;
 
 public sealed class AndroidTrackCoverExtractor : ITrackCoverExtractor
 {
+    private readonly ConcurrentDictionary<string, byte[]?> _coverCache = new(StringComparer.OrdinalIgnoreCase);
+
     public ImageSource? ExtractCover(Uri? contentUri)
     {
         if (contentUri is null)
             return null;
 
+        string key = contentUri.IsFile ? contentUri.LocalPath : contentUri.OriginalString;
+        byte[]? cachedBytes = _coverCache.GetOrAdd(key, _ => ExtractCoverBytes(contentUri));
+
+        return cachedBytes is { Length: > 0 }
+            ? ImageSource.FromStream(() => new MemoryStream(cachedBytes, writable: false))
+            : null;
+    }
+
+    private static byte[]? ExtractCoverBytes(Uri contentUri)
+    {
 #if ANDROID
         using var retriever = new MediaMetadataRetriever();
         try
@@ -36,7 +49,7 @@ public sealed class AndroidTrackCoverExtractor : ITrackCoverExtractor
             byte[]? coverBytes = retriever.GetEmbeddedPicture();
             if (coverBytes is { Length: > 0 })
             {
-                return ImageSource.FromStream(() => new MemoryStream(coverBytes));
+                return coverBytes;
             }
         }
         catch (Exception ex)
@@ -51,7 +64,7 @@ public sealed class AndroidTrackCoverExtractor : ITrackCoverExtractor
             }
             catch
             {
-                //
+                // Игнорируем ошибку освобождения нативного ресурса
             }
         }
 #endif

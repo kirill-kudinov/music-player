@@ -6,7 +6,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Maui.Controls;
 using MusicPlayer.Core.AudioTracks;
 using MusicPlayer.Features.Importer;
 using MusicPlayer.Features.Player;
@@ -85,7 +84,7 @@ public sealed partial class TracksViewModel(
         audioPlayer.Play(item.Track.ContentUri);
         Player.NotifyTrackStarted();
 
-        await Shell.Current.GoToAsync(nameof(PlayerPage));
+        await Player.ExpandCommand.ExecuteAsync(null);
     }
 
     private void ApplyFilter(string? query)

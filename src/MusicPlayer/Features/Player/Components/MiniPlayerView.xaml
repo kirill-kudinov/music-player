@@ -8,41 +8,53 @@
              x:Name="RootView"
              IsVisible="{Binding HasCurrentTrack}">
 
-    <Border Style="{StaticResource MiniPlayerContainerBorderStyle}">
-        <Border.GestureRecognizers>
-            <TapGestureRecognizer Command="{Binding ExpandCommand}" />
-        </Border.GestureRecognizers>
+    <Border x:Name="MiniPlayerContainer"
+            Style="{StaticResource MiniPlayerContainerBorderStyle}">
 
         <Grid ColumnDefinitions="48, *, 40, 40"
               ColumnSpacing="12"
               VerticalOptions="Center">
 
-            <!-- 1. Обложка трека (48x48, скругление 10px, темный фолбэк при отсутствии обложки) -->
-            <Border Grid.Column="0"
-                    Style="{StaticResource MiniPlayerCoverBorderStyle}"
-                    InputTransparent="True">
-                <Image Source="{Binding TrackCover}"
-                       Aspect="AspectFill"
-                       HorizontalOptions="Fill"
-                       VerticalOptions="Fill" />
-            </Border>
+            <!-- Интерактивная область развёртки в полноэкранный плеер (тап или свайп вверх) -->
+            <Grid Grid.Column="0"
+                  Grid.ColumnSpan="2"
+                  ColumnDefinitions="48, *"
+                  ColumnSpacing="12"
+                  BackgroundColor="Transparent"
+                  VerticalOptions="Center">
+                <Grid.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding ExpandCommand}" />
+                    <SwipeGestureRecognizer Direction="Up"
+                                            Command="{Binding ExpandCommand}" />
+                </Grid.GestureRecognizers>
 
-            <!-- 2. Название трека и исполнитель -->
-            <Grid Grid.Column="1"
-                  RowDefinitions="Auto, Auto"
-                  RowSpacing="2"
-                  VerticalOptions="Center"
-                  InputTransparent="True">
-                <Label Grid.Row="0"
-                       Text="{Binding CurrentTrack.Title}"
-                       Style="{StaticResource TrackItemTitleLabelStyle}" />
+                <!-- 1. Обложка трека (48x48, скругление 10px, темный фолбэк при отсутствии обложки) -->
+                <Border Grid.Column="0"
+                        Style="{StaticResource MiniPlayerCoverBorderStyle}"
+                        InputTransparent="True">
+                    <Image Source="{Binding TrackCover}"
+                           Aspect="AspectFill"
+                           HorizontalOptions="Fill"
+                           VerticalOptions="Fill" />
+                </Border>
 
-                <Label Grid.Row="1"
-                       Text="{Binding CurrentTrack.Artist}"
-                       Style="{StaticResource TrackItemSubtitleLabelStyle}" />
+                <!-- 2. Название трека и исполнитель -->
+                <Grid Grid.Column="1"
+                      RowDefinitions="Auto, Auto"
+                      RowSpacing="2"
+                      VerticalOptions="Center"
+                      InputTransparent="True">
+                    <Label Grid.Row="0"
+                           Text="{Binding CurrentTrack.Title}"
+                           Style="{StaticResource TrackItemTitleLabelStyle}" />
+
+                    <Label Grid.Row="1"
+                           Text="{Binding CurrentTrack.Artist}"
+                           Style="{StaticResource TrackItemSubtitleLabelStyle}" />
+                </Grid>
             </Grid>
 
-            <!-- 3. Кнопка паузы / воспроизведения -->
+            <!-- 3. Кнопка паузы / воспроизведения (Resources/Images/player_pause.svg и player_play.svg) -->
             <Border Grid.Column="2"
                     Style="{StaticResource PlayerIconButtonStyle}"
                     VerticalOptions="Center">
@@ -59,7 +71,8 @@
                                            ShouldMakeChildrenInputTransparent="True" />
                 </Border.Behaviors>
 
-                <Image Style="{StaticResource MiniPlayerPlayPauseImageStyle}">
+                <Image Style="{StaticResource MiniPlayerPlayPauseImageStyle}"
+                       InputTransparent="True">
                     <Image.Behaviors>
                         <toolkit:IconTintColorBehavior TintColor="{StaticResource White}" />
                     </Image.Behaviors>
@@ -78,7 +91,7 @@
                 </Image>
             </Border>
 
-            <!-- 4. Кнопка следующего трека -->
+            <!-- 4. Кнопка следующего трека (Resources/Images/player_next.svg) -->
             <Border Grid.Column="3"
                     Style="{StaticResource PlayerIconButtonStyle}"
                     VerticalOptions="Center">
@@ -96,7 +109,8 @@
                 </Border.Behaviors>
 
                 <Image Source="player_next.png"
-                       Style="{StaticResource MiniPlayerStaticIconImageStyle}" />
+                       Style="{StaticResource MiniPlayerStaticIconImageStyle}"
+                       InputTransparent="True" />
             </Border>
 
         </Grid>
