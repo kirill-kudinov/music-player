@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             xmlns:player="clr-namespace:MusicPlayer.Features.Player"
+             x:Class="MusicPlayer.Features.Player.Components.PlayerHeaderView"
+             x:DataType="player:PlayerViewModel"
+             x:Name="RootView">
+
+    <Grid ColumnDefinitions="40, *, 40"
+          HeightRequest="40"
+          VerticalOptions="Center">
+
+        <!-- Свернуть плеер (Resources/Images/player_chevron_down.svg) -->
+        <Border Grid.Column="0"
+                Style="{StaticResource PlayerIconButtonStyle}">
+            <Border.Behaviors>
+                <toolkit:TouchBehavior BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
+                                       Command="{Binding CollapseCommand}"
+                                       DefaultAnimationDuration="150"
+                                       DefaultAnimationEasing="{x:Static Easing.CubicInOut}"
+                                       DefaultBackgroundColor="Transparent"
+                                       HoveredBackgroundColor="{StaticResource TouchOverlayLight}"
+                                       PressedBackgroundColor="{StaticResource TouchOverlayLight}"
+                                       PressedScale="0.92"
+                                       PressedOpacity="0.75"
+                                       ShouldMakeChildrenInputTransparent="True" />
+            </Border.Behaviors>
+            <Image Source="player_chevron_down.png"
+                   Style="{StaticResource PlayerStaticIconImageStyle}" />
+        </Border>
+
+        <!-- Заголовок плейлиста -->
+        <Label Grid.Column="1"
+               Text="{Binding PlayContextTitle}"
+               Style="{StaticResource PlayerHeaderTitleStyle}"
+               Margin="8,0" />
+
+        <!-- Очередь воспроизведения (Resources/Images/player_queue.svg) -->
+        <Border Grid.Column="2"
+                Style="{StaticResource PlayerIconButtonStyle}">
+            <Border.Behaviors>
+                <toolkit:TouchBehavior BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
+                                       Command="{Binding OpenQueueCommand}"
+                                       DefaultAnimationDuration="150"
+                                       DefaultAnimationEasing="{x:Static Easing.CubicInOut}"
+                                       DefaultBackgroundColor="Transparent"
+                                       HoveredBackgroundColor="{StaticResource TouchOverlayLight}"
+                                       PressedBackgroundColor="{StaticResource TouchOverlayLight}"
+                                       PressedScale="0.92"
+                                       PressedOpacity="0.75"
+                                       ShouldMakeChildrenInputTransparent="True" />
+            </Border.Behaviors>
+            <Image Source="player_queue.png"
+                   Style="{StaticResource PlayerStaticIconImageStyle}" />
+        </Border>
+
+    </Grid>
+</ContentView>

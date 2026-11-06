@@ -6,5 +6,5 @@ public static class ResultErrors
         new("Result.NullValue", "Значение результата не может быть null.");
 
     public static readonly Error Uninitialized =
-        new("Result.Uninitialized", "Структура Result не была инициализирована (default).");
+        new("Result.Uninitialized", "Структура Result не была инициализирована.");
 }

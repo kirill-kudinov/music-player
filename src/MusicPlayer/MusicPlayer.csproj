@@ -12,14 +12,6 @@
         <MauiEnableXamlCBindingWithSourceCompilation>true</MauiEnableXamlCBindingWithSourceCompilation>
         <MauiXamlInflator>SourceGen</MauiXamlInflator>
 
-        <!-- Enable XAML source generation for faster build times and improved performance.
-             This generates C# code from XAML at compile time instead of runtime inflation.
-             To disable, remove this line.
-             For individual files, you can override by setting Inflator metadata:
-               <MauiXaml Update="MyPage.xaml" Inflator="Default" /> (reverts to defaults: Runtime for Debug, XamlC for Release)
-               <MauiXaml Update="MyPage.xaml" Inflator="Runtime" /> (force runtime inflation) -->
-        <MauiXamlInflator>SourceGen</MauiXamlInflator>
-
         <!-- Display name -->
         <ApplicationTitle>Music Player</ApplicationTitle>
 
@@ -30,8 +22,8 @@
         <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
         <ApplicationVersion>1</ApplicationVersion>
 
-        <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">26.0</SupportedOSPlatformVersion>
-
+        <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">29.0</SupportedOSPlatformVersion>
+        <TargetPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">36.01</TargetPlatformVersion>
     </PropertyGroup>
 
     <ItemGroup>
@@ -40,27 +32,32 @@
                   ForegroundFile="Resources\AppIcon\appiconfg.svg"
                   Color="#0D0D0D" />
 
-        <!-- Custom Fonts -->
-        <MauiFont Include="Resources\Fonts\*"/>
+        <!-- Подключение всех SVG-иконок из папки Resources\Images -->
+        <MauiImage Include="Resources\Images\*" />
 
-        <!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
-        <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)"/>
+        <!-- Custom Fonts -->
+        <MauiFont Include="Resources\Fonts\*" />
+
+        <!-- Raw Assets -->
+        <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.Maui.Controls"/>
-        <PackageReference Include="Microsoft.Extensions.Logging.Debug"/>
-        <PackageReference Include="CommunityToolkit.Maui.MediaElement"/>
-        <PackageReference Include="CommunityToolkit.Maui"/>
-        <PackageReference Include="CommunityToolkit.Mvvm"/>
+        <PackageReference Include="Microsoft.Maui.Controls" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
+        <PackageReference Include="CommunityToolkit.Maui.MediaElement" />
+        <PackageReference Include="CommunityToolkit.Maui" />
+        <PackageReference Include="CommunityToolkit.Mvvm" />
     </ItemGroup>
 
     <ItemGroup>
         <Folder Include="Platforms\Android\Resources\AppIcon\" />
         <Folder Include="Platforms\Android\Resources\Images\" />
+        <Folder Include="Resources\Splash\" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\MusicPlayer.Core\MusicPlayer.Core.csproj" />
     </ItemGroup>
+
 </Project>

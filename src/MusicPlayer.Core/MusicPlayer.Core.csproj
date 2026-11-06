@@ -7,8 +7,8 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
-    <ItemGroup>
-      <Folder Include="Playback\" />
+    <ItemGroup> 
+        <PackageReference Include="CommunityToolkit.Mvvm"/>
     </ItemGroup>
-
+    
 </Project>

@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             xmlns:player="clr-namespace:MusicPlayer.Features.Player"
+             x:Class="MusicPlayer.Features.Player.Components.PlayerControlsView"
+             x:DataType="player:PlayerViewModel"
+             x:Name="RootView">
+
+    <Grid RowDefinitions="Auto, Auto, Auto"
+          ColumnDefinitions="44, *, 68, *, 44">
+
+        <!-- СТРОКА 0: Слайдер прогресса -->
+        <Slider x:Name="TrackSlider"
+                Grid.Row="0"
+                Grid.Column="0"
+                Grid.ColumnSpan="5"
+                Maximum="{Binding DurationSeconds, FallbackValue=420}"
+                Minimum="0"
+                Value="{Binding PositionSeconds, Mode=OneWay}"
+                Style="{StaticResource PlayerCustomSliderStyle}"
+                DragStartedCommand="{Binding SeekStartedCommand}">
+            <Slider.Behaviors>
+                <toolkit:EventToCommandBehavior EventName="DragCompleted"
+                                                BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
+                                                Command="{Binding SeekCompletedCommand}"
+                                                CommandParameter="{Binding Source={x:Reference TrackSlider}, Path=Value, x:DataType=Slider}" />
+            </Slider.Behaviors>
+        </Slider>
+
+        <!-- СТРОКА 1: Тайминги трека -->
+        <Label Grid.Row="1"
+               Grid.Column="0"
+               Grid.ColumnSpan="2"
+               Text="{Binding Position, StringFormat='{0:m\\:ss}', FallbackValue='0:00'}"
+               Style="{StaticResource TrackTimeLabelStyle}"
+               HorizontalOptions="Start"
+               Margin="0,14,0,0" />
+
+        <Label Grid.Row="1"
+               Grid.Column="3"
+               Grid.ColumnSpan="2"
+               Text="{Binding Duration, StringFormat='{0:m\\:ss}', FallbackValue='0:00'}"
+               Style="{StaticResource TrackTimeLabelStyle}"
+               HorizontalOptions="End"
+               Margin="0,14,0,0" />
+
+        <!-- СТРОКА 2: 5 кнопок управления воспроизведением -->
+
+        <!-- 1. Shuffle: смена между player_shuffle.svg и player_shuffle_inactive.svg -->
+        <Border Grid.Row="2"
+                Grid.Column="0"
+                Style="{StaticResource TransportSideButtonStyle}"
+                HorizontalOptions="Start"
+                Margin="0,27,0,0">
+            <Border.Behaviors>
+                <toolkit:TouchBehavior BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
+                                       Command="{Binding ToggleShuffleCommand}"
+                                       DefaultAnimationDuration="150"
+                                       DefaultAnimationEasing="{x:Static Easing.CubicInOut}"
+                                       DefaultBackgroundColor="Transparent"
+                                       HoveredBackgroundColor="{StaticResource TouchOverlayLight}"
+                                       PressedBackgroundColor="{StaticResource TouchOverlayLight}"
+                                       PressedScale="0.90"
+                                       PressedOpacity="0.75"
+                                       ShouldMakeChildrenInputTransparent="True" />
+            </Border.Behaviors>
+            <Image Style="{StaticResource ShuffleIconImageStyle}">
+                <Image.Triggers>
+                    <DataTrigger TargetType="Image"
+                                 Binding="{Binding IsShuffleEnabled}"
+                                 Value="True">
+                        <Setter Property="Source" Value="player_shuffle.png" />
+                    </DataTrigger>
+                    <DataTrigger TargetType="Image"
+                                 Binding="{Binding IsShuffleEnabled}"
+                                 Value="False">
+                        <Setter Property="Source" Value="player_shuffle_inactive.png" />
+                    </DataTrigger>
+                </Image.Triggers>
+            </Image>
+        </Border>
+
+        <!-- 2. Previous Track (player_prev.svg) -->
+        <Border Grid.Row="2"
+                Grid.Column="1"
+                Style="{StaticResource TransportStepButtonStyle}"
+                Margin="0,27,0,0">
+            <Border.Behaviors>
+                <toolkit:TouchBehavior BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
+                                       Command="{Binding PreviousTrackCommand}"
+                                       DefaultAnimationDuration="150"
+                                       DefaultAnimationEasing="{x:Static Easing.CubicInOut}"
+                                       DefaultBackgroundColor="Transparent"
+                                       HoveredBackgroundColor="{StaticResource TouchOverlayLight}"
+                                       PressedBackgroundColor="{StaticResource TouchOverlayLight}"
+                                       PressedScale="0.90"
+                                       PressedOpacity="0.75"
+                                       ShouldMakeChildrenInputTransparent="True" />
+            </Border.Behaviors>
+            <Image Source="player_prev.png"
+                   Style="{StaticResource PlayerStaticIconImageStyle}" />
+        </Border>
+
+        <!-- 3. Play / Pause: смена между player_play.svg и player_pause.svg -->
+        <Border Grid.Row="2"
+                Grid.Column="2"
+                Style="{StaticResource PlayerMainPlayButtonStyle}"
+                Margin="0,27,0,0">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="34" />
+            </Border.StrokeShape>
+            <Border.Shadow>
+                <Shadow Brush="{StaticResource Black}"
+                        Offset="0,10"
+                        Radius="25"
+                        Opacity="0.25" />
+            </Border.Shadow>
+            <Border.Behaviors>
+                <toolkit:TouchBehavior BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
+                                       Command="{Binding TogglePlayPauseCommand}"
+                                       DefaultAnimationDuration="150"
+                                       DefaultAnimationEasing="{x:Static Easing.CubicInOut}"
+                                       DefaultBackgroundColor="{StaticResource White}"
+                                       HoveredBackgroundColor="{StaticResource TouchOverlayDark}"
+                                       PressedBackgroundColor="{StaticResource TouchOverlayDark}"
+                                       PressedScale="0.94"
+                                       PressedOpacity="0.90"
+                                       ShouldMakeChildrenInputTransparent="True" />
+            </Border.Behaviors>
+
+            <Image Style="{StaticResource PlayPauseIconImageStyle}">
+                <Image.Triggers>
+                    <DataTrigger TargetType="Image"
+                                 Binding="{Binding IsPlaying}"
+                                 Value="False">
+                        <Setter Property="Source" Value="player_play.png" />
+                    </DataTrigger>
+                    <DataTrigger TargetType="Image"
+                                 Binding="{Binding IsPlaying}"
+                                 Value="True">
+                        <Setter Property="Source" Value="player_pause.png" />
+                    </DataTrigger>
+                </Image.Triggers>
+            </Image>
+        </Border>
+
+        <!-- 4. Next Track (player_next.svg) -->
+        <Border Grid.Row="2"
+                Grid.Column="3"
+                Style="{StaticResource TransportStepButtonStyle}"
+                Margin="0,27,0,0">
+            <Border.Behaviors>
+                <toolkit:TouchBehavior BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
+                                       Command="{Binding NextTrackCommand}"
+                                       DefaultAnimationDuration="150"
+                                       DefaultAnimationEasing="{x:Static Easing.CubicInOut}"
+                                       DefaultBackgroundColor="Transparent"
+                                       HoveredBackgroundColor="{StaticResource TouchOverlayLight}"
+                                       PressedBackgroundColor="{StaticResource TouchOverlayLight}"
+                                       PressedScale="0.90"
+                                       PressedOpacity="0.75"
+                                       ShouldMakeChildrenInputTransparent="True" />
+            </Border.Behaviors>
+            <Image Source="player_next.png"
+                   Style="{StaticResource PlayerStaticIconImageStyle}" />
+        </Border>
+
+        <!-- 5. Repeat Mode: смена между player_repeat_inactive.svg, player_repeat_active.svg и player_repeat_one.svg -->
+        <Border Grid.Row="2"
+                Grid.Column="4"
+                Style="{StaticResource TransportSideButtonStyle}"
+                HorizontalOptions="End"
+                Margin="0,27,0,0">
+            <Border.Behaviors>
+                <toolkit:TouchBehavior BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
+                                       Command="{Binding CycleRepeatModeCommand}"
+                                       DefaultAnimationDuration="150"
+                                       DefaultAnimationEasing="{x:Static Easing.CubicInOut}"
+                                       DefaultBackgroundColor="Transparent"
+                                       HoveredBackgroundColor="{StaticResource TouchOverlayLight}"
+                                       PressedBackgroundColor="{StaticResource TouchOverlayLight}"
+                                       PressedScale="0.90"
+                                       PressedOpacity="0.75"
+                                       ShouldMakeChildrenInputTransparent="True" />
+            </Border.Behaviors>
+
+            <Image Style="{StaticResource RepeatIconImageStyle}">
+                <Image.Triggers>
+                    <DataTrigger TargetType="Image"
+                                 Binding="{Binding RepeatMode}"
+                                 Value="{x:Static player:PlaybackRepeatMode.Off}">
+                        <Setter Property="Source" Value="player_repeat_inactive.png" />
+                    </DataTrigger>
+                    <DataTrigger TargetType="Image"
+                                 Binding="{Binding RepeatMode}"
+                                 Value="{x:Static player:PlaybackRepeatMode.All}">
+                        <Setter Property="Source" Value="player_repeat_active.png" />
+                    </DataTrigger>
+                    <DataTrigger TargetType="Image"
+                                 Binding="{Binding RepeatMode}"
+                                 Value="{x:Static player:PlaybackRepeatMode.One}">
+                        <Setter Property="Source" Value="player_repeat_one.png" />
+                    </DataTrigger>
+                </Image.Triggers>
+            </Image>
+        </Border>
+
+    </Grid>
+</ContentView>
