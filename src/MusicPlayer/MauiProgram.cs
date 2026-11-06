@@ -5,7 +5,6 @@ using Microsoft.Maui.Controls.Hosting;
 using Microsoft.Maui.Hosting;
 using MusicPlayer.Features.Importer;
 using MusicPlayer.Features.Player;
-using MusicPlayer.Features.Playlist;
 using MusicPlayer.Features.Tracks;
 using MusicPlayer.Playback;
 
@@ -38,9 +37,7 @@ public static class MauiProgram
 
         builder.Services.AddTransient<TracksViewModel>();
         builder.Services.AddTransient<TracksPage>();
-
-        builder.Services.AddTransient<PlaylistViewModel>();
-        builder.Services.AddTransient<PlaylistPage>();
+        
 
         builder.Services.AddTransient<PlayerViewModel>();
         builder.Services.AddTransient<PlayerPage>();
