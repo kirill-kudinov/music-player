@@ -64,7 +64,7 @@ public sealed class AndroidTrackCoverExtractor : ITrackCoverExtractor
             }
             catch
             {
-                // Игнорируем ошибку освобождения нативного ресурса
+                // 
             }
         }
 #endif

@@ -112,6 +112,7 @@ public partial class AudioTrack : ObservableObject
             ".flac" => AudioFormat.Flac,
             ".ogg" => AudioFormat.Ogg,
             ".opus" => AudioFormat.Opus,
+            ".mp3" or ".mp4" => AudioFormat.Aac,
             _ => AudioFormat.Unknown
         };
     }
