@@ -1,4 +1,5 @@
-<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8"?>
+
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:player="clr-namespace:MusicPlayer.Features.Player"
@@ -6,7 +7,9 @@
              x:Class="MusicPlayer.Features.Player.PlayerPage"
              x:DataType="player:PlayerViewModel"
              Shell.NavBarIsVisible="False"
-             BackgroundColor="{StaticResource BgFallback}">
+             Shell.TabBarIsVisible="False"
+             Shell.PresentationMode="ModalNotAnimated"
+             BackgroundColor="Transparent">
 
     <ContentPage.Resources>
         <ResourceDictionary>
@@ -23,23 +26,36 @@
         </ResourceDictionary>
     </ContentPage.Resources>
 
-    <Grid RowDefinitions="Auto, *, Auto, Auto"
+    <Grid x:Name="PlayerRootGrid"
+          RowDefinitions="Auto, *, Auto, Auto"
           Padding="{StaticResource PlayerScreenPadding}"
           Background="{StaticResource PlayerBackgroundGradientBrush}">
 
         <!-- 1. Верхняя панель -->
-        <components:PlayerHeaderView Grid.Row="0" />
+        <components:PlayerHeaderView x:Name="HeaderSection"
+                                     Grid.Row="0">
+            <components:PlayerHeaderView.GestureRecognizers>
+                <PanGestureRecognizer PanUpdated="OnCollapsePanUpdated" />
+            </components:PlayerHeaderView.GestureRecognizers>
+        </components:PlayerHeaderView>
 
         <!-- 2. Обложка трека -->
-        <components:TrackCoverView Grid.Row="1"
-                                   VerticalOptions="Center" />
+        <components:TrackCoverView x:Name="CoverSection"
+                                   Grid.Row="1"
+                                   VerticalOptions="Center">
+            <components:TrackCoverView.GestureRecognizers>
+                <PanGestureRecognizer PanUpdated="OnCollapsePanUpdated" />
+            </components:TrackCoverView.GestureRecognizers>
+        </components:TrackCoverView>
 
         <!-- 3. Информация о треке и сердечко -->
-        <components:TrackInfoView Grid.Row="2"
+        <components:TrackInfoView x:Name="TrackInfoSection"
+                                  Grid.Row="2"
                                   Margin="{StaticResource TrackInfoBottomMargin}" />
 
         <!-- 4. Панель управления и слайдер -->
-        <components:PlayerControlsView Grid.Row="3" />
+        <components:PlayerControlsView x:Name="ControlsSection"
+                                       Grid.Row="3" />
 
     </Grid>
 </ContentPage>

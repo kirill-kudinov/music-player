@@ -15,18 +15,12 @@
                 Grid.Row="0"
                 Grid.Column="0"
                 Grid.ColumnSpan="5"
-                Maximum="{Binding DurationSeconds, FallbackValue=420}"
                 Minimum="0"
-                Value="{Binding PositionSeconds, Mode=OneWay}"
+                Maximum="{Binding DurationSeconds, FallbackValue=1}"
+                Value="{Binding PositionSeconds, Mode=TwoWay}"
                 Style="{StaticResource PlayerCustomSliderStyle}"
-                DragStartedCommand="{Binding SeekStartedCommand}">
-            <Slider.Behaviors>
-                <toolkit:EventToCommandBehavior EventName="DragCompleted"
-                                                BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
-                                                Command="{Binding SeekCompletedCommand}"
-                                                CommandParameter="{Binding Source={x:Reference TrackSlider}, Path=Value, x:DataType=Slider}" />
-            </Slider.Behaviors>
-        </Slider>
+                DragStartedCommand="{Binding SeekStartedCommand}"
+                DragCompletedCommand="{Binding SeekCompletedCommand}" />
 
         <!-- СТРОКА 1: Тайминги трека -->
         <Label Grid.Row="1"

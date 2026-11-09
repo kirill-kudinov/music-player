@@ -1,7 +1,8 @@
 using System;
 using System.Diagnostics;
-using Android.Media;
+using System.IO;
 #if ANDROID
+using Android.Media;
 using Application = Android.App.Application;
 #endif
 
@@ -12,7 +13,12 @@ public sealed class AndroidAudioPlayer : IAudioPlayer, IDisposable
 #if ANDROID
     private MediaPlayer? _mediaPlayer;
     private bool _isPrepared;
+    private bool _isSeeking;
+    private TimeSpan _lastSeekPosition;
+    private TimeSpan? _pendingSeekPosition;
 #endif
+
+    public event EventHandler? PlaybackCompleted;
 
     public bool IsPlaying
     {
@@ -32,7 +38,10 @@ public sealed class AndroidAudioPlayer : IAudioPlayer, IDisposable
         {
 #if ANDROID
             if (_mediaPlayer is null || !_isPrepared)
-                return TimeSpan.Zero;
+                return _pendingSeekPosition ?? TimeSpan.Zero;
+
+            if (_isSeeking)
+                return _lastSeekPosition;
 
             try
             {
@@ -59,7 +68,8 @@ public sealed class AndroidAudioPlayer : IAudioPlayer, IDisposable
 
             try
             {
-                return TimeSpan.FromMilliseconds(_mediaPlayer.Duration);
+                int durationMs = _mediaPlayer.Duration;
+                return durationMs > 0 ? TimeSpan.FromMilliseconds(durationMs) : TimeSpan.Zero;
             }
             catch (Exception ex)
             {
@@ -77,6 +87,9 @@ public sealed class AndroidAudioPlayer : IAudioPlayer, IDisposable
 #if ANDROID
         Stop();
         _isPrepared = false;
+        _isSeeking = false;
+        _pendingSeekPosition = null;
+        _lastSeekPosition = TimeSpan.Zero;
 
         _mediaPlayer = new MediaPlayer();
         _mediaPlayer.SetAudioAttributes(
@@ -86,16 +99,46 @@ public sealed class AndroidAudioPlayer : IAudioPlayer, IDisposable
                 .Build()!
         );
 
-        _mediaPlayer.Prepared += (sender, args) =>
+        _mediaPlayer.Prepared += (_, _) =>
         {
+            if (_mediaPlayer is null)
+                return;
+
             _isPrepared = true;
+
+            if (_pendingSeekPosition is { } pendingSeek)
+            {
+                _pendingSeekPosition = null;
+                int targetMs = (int)Math.Clamp(pendingSeek.TotalMilliseconds, 0, Math.Max(0, _mediaPlayer.Duration));
+                _mediaPlayer.SeekTo(targetMs);
+            }
+
             _mediaPlayer.Start();
+        };
+
+        _mediaPlayer.SeekComplete += (_, _) =>
+        {
+            _isSeeking = false;
+        };
+
+        _mediaPlayer.Completion += (_, _) =>
+        {
+            _isSeeking = false;
+            PlaybackCompleted?.Invoke(this, EventArgs.Empty);
         };
 
         try
         {
-            var androidUri = Android.Net.Uri.Parse(source.ToString())!;
-            _mediaPlayer.SetDataSource(Application.Context, androidUri);
+            if (source.IsFile && File.Exists(source.LocalPath))
+            {
+                _mediaPlayer.SetDataSource(source.LocalPath);
+            }
+            else
+            {
+                var androidUri = Android.Net.Uri.Parse(source.ToString())!;
+                _mediaPlayer.SetDataSource(Application.Context, androidUri);
+            }
+
             _mediaPlayer.PrepareAsync();
         }
         catch (Exception ex)
@@ -125,10 +168,30 @@ public sealed class AndroidAudioPlayer : IAudioPlayer, IDisposable
     public void Seek(TimeSpan position)
     {
 #if ANDROID
-        if (_mediaPlayer is not null && _isPrepared)
+        if (_mediaPlayer is null)
+            return;
+
+        if (!_isPrepared)
         {
-            int ms = (int)Math.Clamp(position.TotalMilliseconds, 0, _mediaPlayer.Duration);
+            _pendingSeekPosition = position;
+            return;
+        }
+
+        try
+        {
+            int durationMs = _mediaPlayer.Duration;
+            int ms = durationMs > 0
+                ? (int)Math.Clamp(position.TotalMilliseconds, 0, durationMs)
+                : (int)Math.Max(0, position.TotalMilliseconds);
+
+            _lastSeekPosition = TimeSpan.FromMilliseconds(ms);
+            _isSeeking = true;
             _mediaPlayer.SeekTo(ms);
+        }
+        catch (Exception ex)
+        {
+            _isSeeking = false;
+            Debug.WriteLine($"[AudioPlayer] Error seeking: {ex.Message}");
         }
 #endif
     }
@@ -140,6 +203,9 @@ public sealed class AndroidAudioPlayer : IAudioPlayer, IDisposable
             return;
 
         _isPrepared = false;
+        _isSeeking = false;
+        _pendingSeekPosition = null;
+
         try
         {
             if (_mediaPlayer.IsPlaying)
@@ -147,6 +213,10 @@ public sealed class AndroidAudioPlayer : IAudioPlayer, IDisposable
 
             _mediaPlayer.Reset();
             _mediaPlayer.Release();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[AudioPlayer] Error stopping MediaPlayer: {ex.Message}");
         }
         finally
         {

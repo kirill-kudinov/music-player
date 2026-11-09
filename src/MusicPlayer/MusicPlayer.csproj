@@ -3,6 +3,8 @@
     <PropertyGroup>
         <TargetFramework>net10.0-android</TargetFramework>
 
+        <AndroidPackageFormat>None</AndroidPackageFormat>
+
         <OutputType>Exe</OutputType>
         <UseMaui>true</UseMaui>
         <SingleProject>true</SingleProject>
@@ -30,34 +32,38 @@
         <!-- App Icon -->
         <MauiIcon Include="Resources\AppIcon\appicon.svg"
                   ForegroundFile="Resources\AppIcon\appiconfg.svg"
-                  Color="#0D0D0D" />
+                  Color="#0D0D0D"/>
 
         <!-- Подключение всех SVG-иконок из папки Resources\Images -->
-        <MauiImage Include="Resources\Images\*" />
+        <MauiImage Include="Resources\Images\*"/>
 
         <!-- Custom Fonts -->
-        <MauiFont Include="Resources\Fonts\*" />
+        <MauiFont Include="Resources\Fonts\*"/>
 
         <!-- Raw Assets -->
-        <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+        <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)"/>
+
+        <!-- Splash Screen -->
+        <MauiSplashScreen Include="Resources\Splash\splash_logo.svg"
+                           Color="#000000"
+                           BaseSize="128,128" />
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.Maui.Controls" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
-        <PackageReference Include="CommunityToolkit.Maui.MediaElement" />
-        <PackageReference Include="CommunityToolkit.Maui" />
-        <PackageReference Include="CommunityToolkit.Mvvm" />
+        <PackageReference Include="Microsoft.Maui.Controls"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Debug"/>
+        <PackageReference Include="CommunityToolkit.Maui.MediaElement"/>
+        <PackageReference Include="CommunityToolkit.Maui"/>
+        <PackageReference Include="CommunityToolkit.Mvvm"/>
     </ItemGroup>
 
     <ItemGroup>
-        <Folder Include="Platforms\Android\Resources\AppIcon\" />
-        <Folder Include="Platforms\Android\Resources\Images\" />
-        <Folder Include="Resources\Splash\" />
+        <Folder Include="Platforms\Android\Resources\AppIcon\"/>
+        <Folder Include="Platforms\Android\Resources\Images\"/>
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\MusicPlayer.Core\MusicPlayer.Core.csproj" />
+        <ProjectReference Include="..\MusicPlayer.Core\MusicPlayer.Core.csproj"/>
     </ItemGroup>
 
 </Project>

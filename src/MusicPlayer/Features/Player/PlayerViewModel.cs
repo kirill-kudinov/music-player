@@ -2,25 +2,30 @@ using System;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using MusicPlayer.Core.AudioTracks;
+using MusicPlayer.Features.Player.Animations;
 using MusicPlayer.Playback;
 
 namespace MusicPlayer.Features.Player;
 
-public sealed partial class PlayerViewModel : ObservableObject
+public sealed partial class PlayerViewModel : ObservableObject, IDisposable
 {
     private readonly IAudioPlayer _player;
     private readonly IPlaybackQueue _queue;
     private readonly ITrackCoverExtractor _coverExtractor;
+    private readonly IPlayerTransitionService _transitionService;
 
     private bool _isUserSeeking;
+    private bool _isDisposed;
 
     [ObservableProperty]
     private string _playContextTitle = "Плейлист «Избранное»";
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsCurrentTrackFavorite))]
+    [NotifyPropertyChangedFor(nameof(HasCurrentTrack))]
     private AudioTrack? _currentTrack;
 
     [ObservableProperty]
@@ -43,9 +48,31 @@ public sealed partial class PlayerViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(DurationSeconds))]
     private TimeSpan _duration;
 
+    public bool HasCurrentTrack => CurrentTrack is not null;
     public bool IsCurrentTrackFavorite => CurrentTrack?.IsFavorite ?? false;
-    public double PositionSeconds => Position.TotalSeconds;
-    public double DurationSeconds => Duration.TotalSeconds > 0 ? Duration.TotalSeconds : 1.0;
+
+    public double DurationSeconds => Duration.TotalSeconds > 0d ? Duration.TotalSeconds : 1d;
+
+    /// <summary>
+    /// Двусторонняя привязка (TwoWay) для Slider.Value.
+    /// Во время перетаскивания ползунка пользователем (_isUserSeeking == true) обновляет Position в реальном времени,
+    /// а во время обычного воспроизведения обновляется из таймера Tick(), предотвращая сброс привязки в .NET MAUI.
+    /// </summary>
+    public double PositionSeconds
+    {
+        get => Position.TotalSeconds;
+        set
+        {
+            if (!_isUserSeeking || double.IsNaN(value) || double.IsInfinity(value))
+                return;
+
+            double clamped = Math.Clamp(value, 0d, DurationSeconds);
+            if (Math.Abs(Position.TotalSeconds - clamped) < 0.01d)
+                return;
+
+            Position = TimeSpan.FromSeconds(clamped);
+        }
+    }
 
     public bool CanSkipNext => _queue.HasNext;
     public bool CanSkipPrevious => _queue.HasPrevious;
@@ -53,11 +80,15 @@ public sealed partial class PlayerViewModel : ObservableObject
     public PlayerViewModel(
         IAudioPlayer player,
         IPlaybackQueue queue,
-        ITrackCoverExtractor coverExtractor)
+        ITrackCoverExtractor coverExtractor,
+        IPlayerTransitionService transitionService)
     {
         _player = player;
         _queue = queue;
         _coverExtractor = coverExtractor;
+        _transitionService = transitionService;
+
+        _player.PlaybackCompleted += OnPlaybackCompleted;
 
         SyncState();
     }
@@ -67,20 +98,49 @@ public sealed partial class PlayerViewModel : ObservableObject
         TrackCover = _coverExtractor.ExtractCover(value?.ContentUri);
     }
 
+    partial void OnDurationChanged(TimeSpan value)
+    {
+        OnPropertyChanged(nameof(PositionSeconds));
+    }
+
+    public void NotifyTrackStarted()
+    {
+        _isUserSeeking = false;
+        Position = TimeSpan.Zero;
+        SyncState();
+        IsPlaying = true;
+    }
+
     public void Tick()
     {
-        if (IsPlaying != _player.IsPlaying)
-            IsPlaying = _player.IsPlaying;
+        if (_transitionService.IsTransitioning)
+            return;
 
         if (CurrentTrack != _queue.CurrentTrack)
             SyncState();
 
+        bool playerIsPlaying = _player.IsPlaying;
+        if (IsPlaying != playerIsPlaying)
+            IsPlaying = playerIsPlaying;
+
+        if (Duration <= TimeSpan.Zero && _player.Duration > TimeSpan.Zero)
+            Duration = _player.Duration;
+
         if (!_isUserSeeking)
-            Position = _player.Position;
+        {
+            TimeSpan currentPosition = _player.Position;
+            if (Math.Abs((currentPosition - Position).TotalMilliseconds) >= 40d)
+            {
+                Position = currentPosition;
+            }
+        }
     }
 
     [RelayCommand]
-    private static async Task CollapseAsync() => await Shell.Current.GoToAsync("..");
+    private Task CollapseAsync() => _transitionService.CollapseAsync();
+
+    [RelayCommand]
+    private Task ExpandAsync() => _transitionService.ExpandAsync();
 
     [RelayCommand]
     private static Task OpenQueueAsync() => Task.CompletedTask;
@@ -91,6 +151,7 @@ public sealed partial class PlayerViewModel : ObservableObject
         if (_player.IsPlaying)
         {
             _player.Pause();
+            IsPlaying = false;
         }
         else
         {
@@ -98,9 +159,9 @@ public sealed partial class PlayerViewModel : ObservableObject
                 _player.Play(_queue.CurrentTrack.ContentUri);
             else
                 _player.Resume();
-        }
 
-        IsPlaying = _player.IsPlaying;
+            IsPlaying = true;
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanSkipNext))]
@@ -108,7 +169,14 @@ public sealed partial class PlayerViewModel : ObservableObject
     {
         var next = _queue.MoveNext();
         if (next is not null)
+        {
+            _isUserSeeking = false;
+            Position = TimeSpan.Zero;
             _player.Play(next.ContentUri);
+            SyncState();
+            IsPlaying = true;
+            return;
+        }
 
         SyncState();
     }
@@ -118,7 +186,14 @@ public sealed partial class PlayerViewModel : ObservableObject
     {
         var prev = _queue.MovePrevious();
         if (prev is not null)
+        {
+            _isUserSeeking = false;
+            Position = TimeSpan.Zero;
             _player.Play(prev.ContentUri);
+            SyncState();
+            IsPlaying = true;
+            return;
+        }
 
         SyncState();
     }
@@ -139,6 +214,7 @@ public sealed partial class PlayerViewModel : ObservableObject
     {
         _queue.ToggleShuffle();
         IsShuffleEnabled = _queue.IsShuffleEnabled;
+        NotifySkipCommandsCanExecuteChanged();
     }
 
     [RelayCommand]
@@ -146,19 +222,42 @@ public sealed partial class PlayerViewModel : ObservableObject
     {
         _queue.CycleRepeatMode();
         RepeatMode = _queue.RepeatMode;
+        NotifySkipCommandsCanExecuteChanged();
     }
 
     [RelayCommand]
-    private void SeekStarted() => _isUserSeeking = true;
+    private void SeekStarted()
+    {
+        _isUserSeeking = true;
+    }
 
     [RelayCommand]
-    private void SeekCompleted(double targetSeconds)
+    private void SeekCompleted()
     {
-        var targetPosition = TimeSpan.FromSeconds(targetSeconds);
-        _player.Seek(targetPosition);
+        if (!_isUserSeeking)
+            return;
 
-        Position = targetPosition;
+        TimeSpan targetPosition = Position;
+        _player.Seek(targetPosition);
         _isUserSeeking = false;
+        OnPropertyChanged(nameof(PositionSeconds));
+    }
+
+    private void OnPlaybackCompleted(object? sender, EventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (_queue.HasNext)
+            {
+                NextTrack();
+            }
+            else
+            {
+                _isUserSeeking = false;
+                IsPlaying = false;
+                Position = TimeSpan.Zero;
+            }
+        });
     }
 
     private void SyncState()
@@ -167,9 +266,30 @@ public sealed partial class PlayerViewModel : ObservableObject
         IsPlaying = _player.IsPlaying;
         IsShuffleEnabled = _queue.IsShuffleEnabled;
         RepeatMode = _queue.RepeatMode;
-        Duration = CurrentTrack?.Duration ?? TimeSpan.Zero;
 
+        TimeSpan trackDuration = CurrentTrack?.Duration ?? TimeSpan.Zero;
+        Duration = trackDuration > TimeSpan.Zero ? trackDuration : _player.Duration;
+
+        if (!_isUserSeeking)
+        {
+            Position = _player.Position;
+        }
+
+        NotifySkipCommandsCanExecuteChanged();
+    }
+
+    private void NotifySkipCommandsCanExecuteChanged()
+    {
         NextTrackCommand.NotifyCanExecuteChanged();
         PreviousTrackCommand.NotifyCanExecuteChanged();
+    }
+
+    public void Dispose()
+    {
+        if (_isDisposed)
+            return;
+
+        _isDisposed = true;
+        _player.PlaybackCompleted -= OnPlaybackCompleted;
     }
 }

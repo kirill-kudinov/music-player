@@ -4,13 +4,15 @@ namespace MusicPlayer.Playback;
 
 public interface IAudioPlayer
 {
+    event EventHandler? PlaybackCompleted;
+
     bool IsPlaying { get; }
-    TimeSpan Position { get;  }
+    TimeSpan Position { get; }
     TimeSpan Duration { get; }
 
     void Play(Uri source);
     void Resume();
     void Pause();
     void Seek(TimeSpan position);
-    void Stop(); 
+    void Stop();
 }
