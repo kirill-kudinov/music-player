@@ -13,29 +13,20 @@ public partial class PlaybackQueue : IPlaybackQueue
     private readonly Random _random = new();
 
     private int _currentIndex = -1;
-    private IPlaybackQueue _playbackQueueImplementation;
 
-    public AudioTrack? CurrentTrack => 
-        _currentIndex >= 0 && _currentIndex < _playbackTracks.Count 
-            ? _playbackTracks[_currentIndex] 
+    public AudioTrack? CurrentTrack =>
+        _currentIndex >= 0 && _currentIndex < _playbackTracks.Count
+            ? _playbackTracks[_currentIndex]
             : null;
 
-    public bool HasNext => _playbackTracks.Count > 0 && 
+    public bool HasNext => _playbackTracks.Count > 0 &&
         (RepeatMode != PlaybackRepeatMode.Off || _currentIndex < _playbackTracks.Count - 1);
 
-    public bool HasPrevious => _playbackTracks.Count > 0 && 
+    public bool HasPrevious => _playbackTracks.Count > 0 &&
         (RepeatMode != PlaybackRepeatMode.Off || _currentIndex > 0);
 
     public bool IsShuffleEnabled { get; private set; }
     public PlaybackRepeatMode RepeatMode { get; private set; } = PlaybackRepeatMode.Off;
-
-    public void SetTracks(IReadOnlyList<AudioTrack> tracks, AudioTrack current)
-    {
-        _originalTracks.Clear();
-        _originalTracks.AddRange(tracks);
-
-        RebuildPlaybackList(current);
-    }
 
     public void SetTracks(IReadOnlyCollection<AudioTrack> tracks, AudioTrack current)
     {
@@ -43,6 +34,59 @@ public partial class PlaybackQueue : IPlaybackQueue
         _originalTracks.AddRange(tracks);
 
         RebuildPlaybackList(current);
+    }
+
+    public void Enqueue(AudioTrack track)
+    {
+        ArgumentNullException.ThrowIfNull(track);
+
+        if (!_originalTracks.Contains(track))
+        {
+            _originalTracks.Add(track);
+        }
+
+        if (_playbackTracks.Count == 0 || _currentIndex < 0)
+        {
+            _playbackTracks.Add(track);
+            _currentIndex = 0;
+            return;
+        }
+
+        int insertIndex = Math.Clamp(_currentIndex + 1, 0, _playbackTracks.Count);
+        _playbackTracks.Insert(insertIndex, track);
+    }
+
+    public bool Remove(AudioTrack track)
+    {
+        ArgumentNullException.ThrowIfNull(track);
+
+        bool removedFromOriginal = _originalTracks.Remove(track);
+        bool removedFromPlayback = false;
+
+        for (int i = _playbackTracks.Count - 1; i >= 0; i--)
+        {
+            if (!ReferenceEquals(_playbackTracks[i], track) && _playbackTracks[i].ContentUri != track.ContentUri)
+                continue;
+
+            _playbackTracks.RemoveAt(i);
+            removedFromPlayback = true;
+
+            if (i < _currentIndex)
+            {
+                _currentIndex--;
+            }
+            else if (i == _currentIndex && _currentIndex >= _playbackTracks.Count)
+            {
+                _currentIndex = _playbackTracks.Count - 1;
+            }
+        }
+
+        if (_playbackTracks.Count == 0)
+        {
+            _currentIndex = -1;
+        }
+
+        return removedFromOriginal || removedFromPlayback;
     }
 
     public AudioTrack? MoveNext()
@@ -134,8 +178,8 @@ public partial class PlaybackQueue : IPlaybackQueue
             _playbackTracks.AddRange(_originalTracks);
         }
 
-        _currentIndex = keepCurrent is not null 
-            ? _playbackTracks.IndexOf(keepCurrent) 
+        _currentIndex = keepCurrent is not null
+            ? _playbackTracks.IndexOf(keepCurrent)
             : (_playbackTracks.Count > 0 ? 0 : -1);
     }
 }

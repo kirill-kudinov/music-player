@@ -53,11 +53,6 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
 
     public double DurationSeconds => Duration.TotalSeconds > 0d ? Duration.TotalSeconds : 1d;
 
-    /// <summary>
-    /// Двусторонняя привязка (TwoWay) для Slider.Value.
-    /// Во время перетаскивания ползунка пользователем (_isUserSeeking == true) обновляет Position в реальном времени,
-    /// а во время обычного воспроизведения обновляется из таймера Tick(), предотвращая сброс привязки в .NET MAUI.
-    /// </summary>
     public double PositionSeconds
     {
         get => Position.TotalSeconds;
@@ -109,6 +104,60 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
         Position = TimeSpan.Zero;
         SyncState();
         IsPlaying = true;
+    }
+
+    public void SyncQueueState()
+    {
+        SyncState();
+    }
+
+    public void SyncFavoriteState()
+    {
+        OnPropertyChanged(nameof(CurrentTrack));
+        OnPropertyChanged(nameof(IsCurrentTrackFavorite));
+    }
+
+    public void HandleTrackRemoved(AudioTrack removedTrack)
+    {
+        bool wasCurrentTrack = ReferenceEquals(CurrentTrack, removedTrack) ||
+                               (CurrentTrack is not null && CurrentTrack.ContentUri == removedTrack.ContentUri);
+        bool wasPlaying = _player.IsPlaying;
+
+        _queue.Remove(removedTrack);
+
+        if (!wasCurrentTrack)
+        {
+            NotifySkipCommandsCanExecuteChanged();
+            return;
+        }
+
+        _isUserSeeking = false;
+        var nextCurrent = _queue.CurrentTrack;
+
+        if (nextCurrent is null)
+        {
+            _player.Stop();
+            CurrentTrack = null;
+            IsPlaying = false;
+            Position = TimeSpan.Zero;
+            Duration = TimeSpan.Zero;
+            NotifySkipCommandsCanExecuteChanged();
+            return;
+        }
+
+        Position = TimeSpan.Zero;
+        if (wasPlaying)
+        {
+            _player.Play(nextCurrent.ContentUri);
+            SyncState();
+            IsPlaying = true;
+        }
+        else
+        {
+            _player.Stop();
+            SyncState();
+            IsPlaying = false;
+        }
     }
 
     public void Tick()
@@ -205,8 +254,7 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
             return;
 
         CurrentTrack.ToggleFavorite();
-        OnPropertyChanged(nameof(CurrentTrack));
-        OnPropertyChanged(nameof(IsCurrentTrackFavorite));
+        SyncFavoriteState();
     }
 
     [RelayCommand]

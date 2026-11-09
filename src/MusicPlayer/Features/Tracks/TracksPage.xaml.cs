@@ -22,6 +22,8 @@ public partial class TracksPage : ContentPage
         _transitionService.RegisterMiniPlayerCallbacks(
             MiniPlayer.PlayExpandOutAnimationAsync,
             MiniPlayer.PlayCollapseInAnimationAsync);
+
+        _tracksViewModel.LoadTracks();
     }
 
     protected override void OnAppearing()
@@ -33,5 +35,16 @@ public partial class TracksPage : ContentPage
             MiniPlayer.PlayCollapseInAnimationAsync);
 
         _tracksViewModel.LoadTracks();
+    }
+
+    protected override bool OnBackButtonPressed()
+    {
+        if (_tracksViewModel.IsTrackOptionsPopupVisible)
+        {
+            _tracksViewModel.CloseTrackOptionsCommand.Execute(null);
+            return true;
+        }
+
+        return base.OnBackButtonPressed();
     }
 }

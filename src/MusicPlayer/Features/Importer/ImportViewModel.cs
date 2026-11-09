@@ -15,10 +15,11 @@ public sealed partial class ImportViewModel(
     {
         var pickResult = await trackPicker.PickTrackAsync();
 
-        if (!pickResult.TryGetOk(out var getResult)) return;
+        if (!pickResult.TryGetOk(out var getResult))
+            return;
 
-        var selectedFile = (FileStream)await getResult.OpenReadAsync();
+        await using Stream selectedStream = await getResult.OpenReadAsync();
 
-        await trackStorage.AddTrackAsync(getResult.FileName, selectedFile);
+        await trackStorage.AddTrackAsync(getResult.FileName, selectedStream);
     }
 }
