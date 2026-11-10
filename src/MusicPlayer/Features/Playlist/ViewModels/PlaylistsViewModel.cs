@@ -4,7 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace MusicPlayer.Features.Playlist;
 
-public sealed partial class AvailablePlaylistsViewModel : ObservableObject
+public sealed partial class PlaylistsViewModel : ObservableObject
 {
     public ObservableCollection<Core.Playlist.Playlist> Playlists = [];
 
