@@ -40,8 +40,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<PlayerViewModel>();
         builder.Services.AddTransient<PlayerPage>();
 
-        builder.Services.AddTransient<TracksViewModel>();
-        builder.Services.AddTransient<TracksPage>();
+        builder.Services.AddSingleton<TracksViewModel>();
+        builder.Services.AddSingleton<TracksPage>();
 
         builder.Services.AddTransient<ImportViewModel>();
         builder.Services.AddTransient<ImportPage>();

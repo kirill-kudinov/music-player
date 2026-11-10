@@ -48,4 +48,12 @@
     <Color x:Key="TouchOverlayDark">#E6FFFFFF</Color>
     <Color x:Key="PillHandleColor">#4DFFFFFF</Color>
 
+    <!-- Токены поверхности и акцентов Bottom Sheet (Material Design 3 / YouTube Music Dark) -->
+    <Color x:Key="PopupScrimColor">#8C000000</Color>
+    <Color x:Key="PopupSurfaceColor">#1C1C26</Color>
+    <Color x:Key="PopupBorderColor">#26FFFFFF</Color>
+    <Color x:Key="PopupDividerColor">#1AFFFFFF</Color>
+    <Color x:Key="DangerAccent">#FF453A</Color>
+    <Color x:Key="DangerTouchOverlay">#26FF453A</Color>
+
 </ResourceDictionary>

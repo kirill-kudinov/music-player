@@ -22,8 +22,6 @@ public sealed class TrackPicker
                         "audio/ogg",
                         "audio/opus",
                         "audio/mpeg",
-                        "audio/mp3",
-                        "audio/mp4"
                     ]
                 }
             })

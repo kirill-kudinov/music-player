@@ -379,8 +379,8 @@
         <Setter Property="HorizontalOptions" Value="Center" />
         <Setter Property="VerticalOptions" Value="Center" />
     </Style>
-    
-    
+
+
     <!-- СТИЛИ ЭКРАНА СПИСКА ТРЕКОВ -->
 
     <Style x:Key="SearchBarBorderStyle" TargetType="Border">
@@ -450,12 +450,14 @@
         <Setter Property="MaxLines" Value="1" />
     </Style>
 
-    
+
+    <!-- СТИЛИ МИНИ-ПЛЕЕРА -->
+
     <Style x:Key="MiniPlayerContainerBorderStyle" TargetType="Border">
         <Setter Property="HeightRequest" Value="68" />
         <Setter Property="BackgroundColor" Value="{StaticResource BgSurface}" />
         <Setter Property="Stroke" Value="{StaticResource White}" />
-        <Setter Property="StrokeThickness" Value="1" />
+        <Setter Property="StrokeThickness" Value="2" />
         <Setter Property="Padding" Value="12,8" />
         <Setter Property="StrokeShape">
             <Setter.Value>
@@ -495,4 +497,68 @@
         <Setter Property="HorizontalOptions" Value="Center" />
         <Setter Property="VerticalOptions" Value="Center" />
     </Style>
+
+    <!-- СТИЛИ НИЖНЕЙ ШТОРКИ BOTTOM SHEET В СТИЛЕ YOUTUBE MUSIC (MATERIAL DESIGN 3) -->
+
+    <Style x:Key="BottomSheetContainerBorderStyle" TargetType="Border">
+        <Setter Property="BackgroundColor" Value="{StaticResource PopupSurfaceColor}" />
+        <Setter Property="Stroke" Value="{StaticResource PopupBorderColor}" />
+        <Setter Property="StrokeThickness" Value="1" />
+        <Setter Property="Padding" Value="0,10,0,20" />
+        <Setter Property="HorizontalOptions" Value="Fill" />
+        <Setter Property="VerticalOptions" Value="End" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="StrokeShape">
+            <Setter.Value>
+                <RoundRectangle CornerRadius="28,28,0,0" />
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Shadow">
+            <Setter.Value>
+                <Shadow Brush="{StaticResource Black}"
+                        Offset="0,-8"
+                        Radius="28"
+                        Opacity="0.55" />
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="BottomSheetDragHandleStyle" TargetType="BoxView">
+        <Setter Property="WidthRequest" Value="36" />
+        <Setter Property="HeightRequest" Value="4" />
+        <Setter Property="CornerRadius" Value="2" />
+        <Setter Property="Color" Value="{StaticResource PillHandleColor}" />
+        <Setter Property="HorizontalOptions" Value="Center" />
+        <Setter Property="Margin" Value="0,2,0,10" />
+        <Setter Property="InputTransparent" Value="True" />
+    </Style>
+
+    <Style x:Key="BottomSheetActionRowBorderStyle" TargetType="Border">
+        <Setter Property="MinimumHeightRequest" Value="54" />
+        <Setter Property="BackgroundColor" Value="Transparent" />
+        <Setter Property="StrokeThickness" Value="0" />
+        <Setter Property="Padding" Value="20,12" />
+        <Setter Property="StrokeShape">
+            <Setter.Value>
+                <RoundRectangle CornerRadius="16" />
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="TrackPopupActionLabelStyle" TargetType="Label">
+        <Setter Property="FontFamily" Value="Roboto-Regular" />
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="TextColor" Value="{StaticResource TextPrimary}" />
+        <Setter Property="VerticalOptions" Value="Center" />
+        <Setter Property="LineBreakMode" Value="TailTruncation" />
+    </Style>
+
+    <Style x:Key="TrackPopupDestructiveLabelStyle" TargetType="Label">
+        <Setter Property="FontFamily" Value="Roboto-Bold" />
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="TextColor" Value="{StaticResource DangerAccent}" />
+        <Setter Property="VerticalOptions" Value="Center" />
+        <Setter Property="LineBreakMode" Value="TailTruncation" />
+    </Style>
+
 </ResourceDictionary>
