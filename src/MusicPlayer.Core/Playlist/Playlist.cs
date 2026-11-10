@@ -43,9 +43,9 @@ public sealed class Playlist
         return new Playlist(normalizedName, tracks);
     }
 
-    private static async Task<List<AudioTrack>> CreateTracksAsync(string directoryPath)
+    private static async Task<List<AudioTrack>> CreateTracksAsync(string playlistDirectoryPath)
     {
-        var trackPaths = await File.ReadAllLinesAsync(directoryPath);
+        var trackPaths = await File.ReadAllLinesAsync(playlistDirectoryPath);
         var tracks = new List<AudioTrack>();
 
         if (trackPaths.Length == 0) return [];
