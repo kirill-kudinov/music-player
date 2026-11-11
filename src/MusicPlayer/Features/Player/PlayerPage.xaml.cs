@@ -14,20 +14,19 @@ public partial class PlayerPage : ContentPage
     private readonly PlayerViewModel _viewModel;
     private readonly IPlayerTransitionService _transitionService;
     private readonly IDispatcherTimer _pollingTimer;
-
     private bool _hasPlayedExpandAnimation;
+    private bool _isDraggingSheet;
 
     public PlayerPage(
         PlayerViewModel viewModel,
         IPlayerTransitionService transitionService)
     {
         InitializeComponent();
-
         BindingContext = _viewModel = viewModel;
         _transitionService = transitionService;
 
         _pollingTimer = Dispatcher.CreateTimer();
-        _pollingTimer.Interval = TimeSpan.FromMilliseconds(200);
+        _pollingTimer.Interval = TimeSpan.FromMilliseconds(100);
         _pollingTimer.Tick += OnPollingTimerTick;
     }
 
@@ -36,13 +35,12 @@ public partial class PlayerPage : ContentPage
         base.OnAppearing();
 
         _transitionService.RegisterPlayerPageCallbacks(PlayCollapseAnimationAsync);
-
         _viewModel.Tick();
-        _pollingTimer.Start();
 
         if (!_hasPlayedExpandAnimation)
         {
             _hasPlayedExpandAnimation = true;
+
             PlayerVisualAnimator.PrepareForExpand(
                 PlayerRootGrid,
                 HeaderSection,
@@ -58,15 +56,17 @@ public partial class PlayerPage : ContentPage
                 TrackInfoSection,
                 ControlsSection);
         }
+
+        _pollingTimer.Start();
     }
 
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
-
         _pollingTimer.Stop();
         _transitionService.UnregisterPlayerPageCallbacks();
         _hasPlayedExpandAnimation = false;
+        _isDraggingSheet = false;
     }
 
     protected override bool OnBackButtonPressed()
@@ -82,7 +82,6 @@ public partial class PlayerPage : ContentPage
     private Task PlayCollapseAnimationAsync()
     {
         _pollingTimer.Stop();
-
         return PlayerVisualAnimator.AnimateCollapseAsync(
             PlayerRootGrid,
             HeaderSection,
@@ -100,6 +99,7 @@ public partial class PlayerPage : ContentPage
         switch (e.StatusType)
         {
             case GestureStatus.Started:
+                _isDraggingSheet = true;
                 PlayerRootGrid.CancelAnimations();
                 break;
 
@@ -118,6 +118,7 @@ public partial class PlayerPage : ContentPage
 
             case GestureStatus.Completed:
             case GestureStatus.Canceled:
+                _isDraggingSheet = false;
                 if (PlayerRootGrid.TranslationY >= CollapseDragThreshold)
                 {
                     await _viewModel.CollapseCommand.ExecuteAsync(null);
@@ -132,6 +133,9 @@ public partial class PlayerPage : ContentPage
 
     private void OnPollingTimerTick(object? sender, EventArgs e)
     {
+        if (_isDraggingSheet)
+            return;
+
         _viewModel.Tick();
     }
 }
