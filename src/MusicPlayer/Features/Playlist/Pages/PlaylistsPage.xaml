@@ -2,8 +2,122 @@
 
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="MusicPlayer.Features.Playlist.Pages.PlaylistsPage">
-    <ContentPage.Content>
-        
-    </ContentPage.Content>
+             xmlns:playlist="clr-namespace:MusicPlayer.Core.Playlist;assembly=MusicPlayer.Core"
+             xmlns:viewModels="clr-namespace:MusicPlayer.Features.Playlist.ViewModels"
+             xmlns:behaviors="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             x:Class="MusicPlayer.Features.Playlist.Pages.PlaylistsPage"
+             x:DataType="viewModels:PlaylistsViewModel"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="{StaticResource BgCanvas}">
+
+    <Grid RowDefinitions="Auto, *, Auto"
+          Padding="16,16,16,0"
+          RowSpacing="16">
+
+        <Border Grid.Row="0"
+                Style="{StaticResource SearchBarBorderStyle}">
+            <Grid ColumnDefinitions="20, *"
+                  ColumnSpacing="10"
+                  VerticalOptions="Center">
+
+                <Image Grid.Column="0"
+                       Source="search_icon.svg"
+                       WidthRequest="24"
+                       HeightRequest="24"
+                       Aspect="AspectFit"
+                       HorizontalOptions="Center"
+                       VerticalOptions="Center"
+                       InputTransparent="True">
+                    <Image.Behaviors>
+                        <behaviors:IconTintColorBehavior TintColor="{StaticResource TextMuted}" />
+                    </Image.Behaviors>
+                </Image>
+                
+                <!-- <Entry Grid.Column="1" -->
+                <!--        Text="{Binding SearchQuery, Mode=TwoWay}" -->
+                <!--        Placeholder="Поиск по названию или исполнителю..." -->
+                <!--        Style="{StaticResource SearchEntryStyle}" /> -->
+            </Grid>
+        </Border>
+
+        <!-- 2. Список треков (в строке *, чтобы работала виртуализация CollectionView без перегрузки UI-потока) -->
+        <CollectionView Grid.Row="1"
+                        ItemSizingStrategy="MeasureFirstItem"
+                        ItemsSource="{Binding Playlists}"
+                        SelectionMode="None">
+            <CollectionView.ItemsLayout>
+                <LinearItemsLayout Orientation="Vertical"
+                                   ItemSpacing="10" />
+            </CollectionView.ItemsLayout>
+
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="playlist:Playlist">
+                    <Border Style="{StaticResource TrackCardBorderStyle}">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer
+                                Command="{Binding
+                                 Source={RelativeSource AncestorType={x:Type viewModels:PlaylistsViewModel}},
+                                 Path=OpenPlaylistCommand, 
+                                 x:DataType=viewModels:PlaylistsViewModel}"
+                                CommandParameter="{Binding}" />
+                        </Border.GestureRecognizers>
+
+                        <Grid ColumnDefinitions="auto, *"
+                              VerticalOptions="Center">
+
+                            <!-- Название трека, исполнитель и длительность -->
+                            <Grid Grid.Column="0"
+                                  RowDefinitions="Auto"
+                                  VerticalOptions="Center"
+                                  InputTransparent="True">
+                                <Label Grid.Row="0"
+                                       Text="{Binding Name}"
+                                       Style="{StaticResource TrackItemTitleLabelStyle}" />
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <Border StrokeShape="RoundRectangle 24"
+                Stroke="{StaticResource Gray400}"
+                StrokeThickness="1"
+                BackgroundColor="#181920"
+                Padding="18">
+            <Border.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding CreateNewPlaylistCommand}" />
+            </Border.GestureRecognizers>
+
+            <Grid ColumnDefinitions="Auto, *"
+                  ColumnSpacing="16"
+                  VerticalOptions="Center">
+
+                <Border Grid.Column="0"
+                        StrokeShape="RoundRectangle 16"
+                        BackgroundColor="#262833"
+                        StrokeThickness="0"
+                        WidthRequest="56"
+                        HeightRequest="56"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center">
+
+                    <Image Source="tab_tracks_inactive.png"
+                           WidthRequest="24"
+                           HeightRequest="24"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center" />
+                </Border>
+
+                <VerticalStackLayout Grid.Column="1"
+                                     Spacing="4"
+                                     VerticalOptions="Center">
+                    <Label Text="Выбрать аудиофайл"
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           TextColor="White" />
+                </VerticalStackLayout>
+            </Grid>
+        </Border>
+    </Grid>
 </ContentPage>

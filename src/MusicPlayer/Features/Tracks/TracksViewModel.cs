@@ -1,31 +1,26 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using MusicPlayer.Core.AudioTracks;
-using MusicPlayer.Features.Importer;
 using MusicPlayer.Features.Player;
+using MusicPlayer.Infrastructure;
 using MusicPlayer.Playback;
 
 namespace MusicPlayer.Features.Tracks;
 
 public sealed partial class TracksViewModel(
-    TrackStorageSettings storageSettings,
+    Database database,
     ITrackCoverExtractor coverExtractor,
     IPlaybackQueue playbackQueue,
     IAudioPlayer audioPlayer,
     PlayerViewModel playerViewModel) : ObservableObject
 {
     private readonly List<TrackItemViewModel> _allTracks = [];
-    private readonly HashSet<string> _loadedPaths = new(StringComparer.OrdinalIgnoreCase);
 
-    [ObservableProperty]
-    private string _searchQuery = string.Empty;
-
+    [ObservableProperty] public partial string SearchQuery { get; set; } = string.Empty;
     public PlayerViewModel Player { get; } = playerViewModel;
 
     public ObservableCollection<TrackItemViewModel> FilteredTracks { get; } = [];
@@ -35,26 +30,18 @@ public sealed partial class TracksViewModel(
         ApplyFilter(value);
     }
 
-    public void LoadTracks()
+    public async Task LoadTracks()
     {
         Player.Tick();
 
-        if (!Directory.Exists(storageSettings.BaseDirectory))
-            return;
+        var hasNewTracks = false;
+        
+        _allTracks.Clear();
 
-        bool hasNewTracks = false;
-
-        foreach (string filePath in Directory.EnumerateFiles(storageSettings.BaseDirectory))
+        foreach (var track in await database.GetAudioTracks())
         {
-            if (!_loadedPaths.Add(filePath))
-                continue;
-
-            var trackResult = AudioTrack.Create(filePath);
-            if (!trackResult.TryGetOk(out var track))
-                continue;
-
             var cover = coverExtractor.ExtractCover(track.ContentUri);
-            _allTracks.Add(new TrackItemViewModel(track, cover));
+            _allTracks.Add(new TrackItemViewModel(track.Id, track, cover));
             hasNewTracks = true;
         }
 

@@ -1,33 +1,29 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Maui.Controls;
 using MusicPlayer.Core.AudioTracks;
-using MusicPlayer.Features.Importer;
 using MusicPlayer.Features.Player;
+using MusicPlayer.Features.Playlist.Pages;
 using MusicPlayer.Features.Tracks;
+using MusicPlayer.Infrastructure;
 using MusicPlayer.Playback;
 
-namespace MusicPlayer.Features.Playlist;
+namespace MusicPlayer.Features.Playlist.ViewModels;
 
-public sealed partial class PlaylistTracksViewModel(
-    TrackStorageSettings storageSettings,
+public sealed partial class PlaylistChoosingTrackViewModel(
+    Database database,
     ITrackCoverExtractor coverExtractor,
-    IPlaybackQueue playbackQueue,
-    IAudioPlayer audioPlayer,
-    Core.Playlist.Playlist playlist,
     PlayerViewModel playerViewModel) : ObservableObject
 {
     private readonly List<TrackItemViewModel> _allTracks = [];
-    private readonly HashSet<string> _loadedPaths = new(StringComparer.OrdinalIgnoreCase);
 
-    [ObservableProperty]
-    private string _searchQuery = string.Empty;
-
+    public Core.Playlist.Playlist Playlist { get; set; }
+    [ObservableProperty] public partial string SearchQuery { get; set; } = string.Empty;
     public PlayerViewModel Player { get; } = playerViewModel;
 
     public ObservableCollection<TrackItemViewModel> FilteredTracks { get; } = [];
@@ -37,26 +33,16 @@ public sealed partial class PlaylistTracksViewModel(
         ApplyFilter(value);
     }
 
-    public void LoadTracks()
+    public async Task LoadTracks()
     {
         Player.Tick();
 
-        if (!Directory.Exists(storageSettings.BaseDirectory))
-            return;
+        var hasNewTracks = false;
 
-        bool hasNewTracks = false;
-
-        foreach (string filePath in Directory.EnumerateFiles(storageSettings.BaseDirectory))
+        foreach (var track in await database.GetAudioTracks())
         {
-            if (!_loadedPaths.Add(filePath))
-                continue;
-
-            var trackResult = AudioTrack.Create(filePath);
-            if (!trackResult.TryGetOk(out var track))
-                continue;
-
             var cover = coverExtractor.ExtractCover(track.ContentUri);
-            _allTracks.Add(new TrackItemViewModel(track, cover));
+            _allTracks.Add(new TrackItemViewModel(track.Id, track, cover));
             hasNewTracks = true;
         }
 
@@ -75,20 +61,6 @@ public sealed partial class PlaylistTracksViewModel(
         item.Track.ToggleFavorite();
     }
 
-    [RelayCommand]
-    private async Task OpenTrackAsync(TrackItemViewModel? item)
-    {
-        if (item is null)
-            return;
-
-        var queueTracks = _allTracks.Select(x => x.Track).ToList();
-        playbackQueue.SetTracks(queueTracks, item.Track);
-        audioPlayer.Play(item.Track.ContentUri);
-        Player.NotifyTrackStarted();
-
-        await Player.ExpandCommand.ExecuteAsync(null);
-    }
-
     private void ApplyFilter(string? query)
     {
         FilteredTracks.Clear();
@@ -104,5 +76,13 @@ public sealed partial class PlaylistTracksViewModel(
         {
             FilteredTracks.Add(item);
         }
+    }
+
+    [RelayCommand]
+    private async Task Choose(TrackItemViewModel audioTrack)
+    {
+        var foundAudioTrack = await database.GetAudioTrack(audioTrack.Id);
+        await database.AddAudioTrackToPlaylist(foundAudioTrack, Playlist);
+        await Shell.Current.GoToAsync($"//{nameof(PlaylistsPage)}");
     }
 }

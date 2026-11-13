@@ -24,7 +24,7 @@ public partial class TracksPage : ContentPage
             MiniPlayer.PlayCollapseInAnimationAsync);
     }
 
-    protected override void OnAppearing()
+    protected override async void OnAppearing()
     {
         base.OnAppearing();
 
@@ -32,6 +32,6 @@ public partial class TracksPage : ContentPage
             MiniPlayer.PlayExpandOutAnimationAsync,
             MiniPlayer.PlayCollapseInAnimationAsync);
 
-        _tracksViewModel.LoadTracks();
+        await _tracksViewModel.LoadTracks();
     }
 }

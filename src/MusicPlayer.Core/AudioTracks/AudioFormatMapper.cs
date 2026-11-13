@@ -1,9 +1,9 @@
 namespace MusicPlayer.Core.AudioTracks;
 
-public static class MimeTypeParser
+public static class FileTypeMapper
 {
-    public static AudioFormat Parse(string? mimeType) =>
-        mimeType?.Trim().ToLowerInvariant() switch
+    public static AudioFormat ToEntity(string? fileType) =>
+        fileType?.Trim().ToLowerInvariant() switch
         {
             "audio/mp4" or "audio/aac" => AudioFormat.Aac,
             "audio/flac" => AudioFormat.Flac,
@@ -11,4 +11,6 @@ public static class MimeTypeParser
             "audio/opus" => AudioFormat.Opus,
             _ => AudioFormat.Unknown
         };
+    
+    public static string ToString(AudioFormat )
 }

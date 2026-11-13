@@ -2,12 +2,15 @@ using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using MusicPlayer.Core.AudioTracks;
+using MusicPlayer.Infrastructure;
 
 namespace MusicPlayer.Features.Importer;
 
 public sealed partial class ImportViewModel(
+    Database database,
     TrackPicker trackPicker,
-    TrackStorage trackStorage
+    FileStorage fileStorage
 ) : ObservableObject
 {
     [RelayCommand]
@@ -19,6 +22,8 @@ public sealed partial class ImportViewModel(
 
         var selectedFile = (FileStream)await getResult.OpenReadAsync();
 
-        await trackStorage.AddTrackAsync(getResult.FileName, selectedFile);
+        await fileStorage.AddAsync(getResult.FileName, selectedFile);
+
+        await database.AddAudioTrack(AudioTrack.Create(selectedFile.Name));
     }
 }

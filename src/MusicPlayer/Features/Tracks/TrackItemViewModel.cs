@@ -3,8 +3,9 @@ using MusicPlayer.Core.AudioTracks;
 
 namespace MusicPlayer.Features.Tracks;
 
-public sealed class TrackItemViewModel(AudioTrack track, ImageSource? cover)
+public sealed class TrackItemViewModel(int id, AudioTrack track, ImageSource? cover)
 {
+    public int Id { get; } = id;
     public AudioTrack Track { get; } = track;
     public ImageSource? Cover { get; } = cover;
 

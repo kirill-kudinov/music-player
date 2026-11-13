@@ -55,7 +55,10 @@
                     <Border Style="{StaticResource TrackCardBorderStyle}">
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer
-                                Command="{Binding Source={RelativeSource AncestorType={x:Type tracks:TracksViewModel}}, Path=OpenTrackCommand, x:DataType=tracks:TracksViewModel}"
+                                Command="{Binding 
+                                Source={RelativeSource AncestorType={x:Type tracks:TracksViewModel}},
+                                Path=OpenTrackCommand,
+                                x:DataType=tracks:TracksViewModel}"
                                 CommandParameter="{Binding .}" />
                         </Border.GestureRecognizers>
 

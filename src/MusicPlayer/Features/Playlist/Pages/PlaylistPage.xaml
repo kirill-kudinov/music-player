@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewModels="clr-namespace:MusicPlayer.Features.Playlist.ViewModels"
+             xmlns:tracks="clr-namespace:MusicPlayer.Features.Tracks"
+             xmlns:behaviors="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             xmlns:components="clr-namespace:MusicPlayer.Features.Player.Components"
+             x:Class="MusicPlayer.Features.Playlist.Pages.PlaylistPage"
+             x:DataType="viewModels:PlaylistViewModel">
+    <ContentPage.Content>
+        <Grid RowDefinitions="Auto, *, Auto"
+              Padding="16,16,16,0"
+              RowSpacing="16">
+
+            <Border Grid.Row="0"
+                    Style="{StaticResource SearchBarBorderStyle}">
+                <Grid ColumnDefinitions="20, *"
+                      ColumnSpacing="10"
+                      VerticalOptions="Center">
+
+                    <Image Grid.Column="0"
+                           Source="search_icon.svg"
+                           WidthRequest="24"
+                           HeightRequest="24"
+                           Aspect="AspectFit"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center"
+                           InputTransparent="True">
+                        <Image.Behaviors>
+                            <behaviors:IconTintColorBehavior TintColor="{StaticResource TextMuted}" />
+                        </Image.Behaviors>
+                    </Image>
+
+                    <Entry Grid.Column="1"
+                           Text="{Binding SearchQuery, Mode=TwoWay}"
+                           Placeholder="Поиск по названию или исполнителю..."
+                           Style="{StaticResource SearchEntryStyle}" />
+                </Grid>
+            </Border>
+
+            <!-- 2. Список треков (в строке *, чтобы работала виртуализация CollectionView без перегрузки UI-потока) -->
+            <CollectionView Grid.Row="1"
+                            ItemsSource="{Binding FilteredTracks}"
+                            SelectionMode="None"
+                            ItemSizingStrategy="MeasureFirstItem">
+                <CollectionView.ItemsLayout>
+                    <LinearItemsLayout Orientation="Vertical"
+                                       ItemSpacing="10" />
+                </CollectionView.ItemsLayout>
+
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="tracks:TrackItemViewModel">
+                        <Border Style="{StaticResource TrackCardBorderStyle}">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type tracks:TracksViewModel}}, Path=OpenTrackCommand, x:DataType=tracks:TracksViewModel}"
+                                    CommandParameter="{Binding .}" />
+                            </Border.GestureRecognizers>
+
+                            <Grid ColumnDefinitions="52, *, 40"
+                                  ColumnSpacing="14"
+                                  VerticalOptions="Center">
+
+                                <!-- Обложка трека -->
+                                <Border Grid.Column="0"
+                                        Style="{StaticResource TrackItemCoverBorderStyle}"
+                                        InputTransparent="True">
+                                    <Image Source="{Binding Cover}"
+                                           Aspect="AspectFill"
+                                           HorizontalOptions="Fill"
+                                           VerticalOptions="Fill" />
+                                </Border>
+
+                                <!-- Название трека, исполнитель и длительность -->
+                                <Grid Grid.Column="1"
+                                      RowDefinitions="Auto, Auto"
+                                      RowSpacing="2"
+                                      VerticalOptions="Center"
+                                      InputTransparent="True">
+                                    <Label Grid.Row="0"
+                                           Text="{Binding Track.Title}"
+                                           Style="{StaticResource TrackItemTitleLabelStyle}" />
+
+                                    <Label Grid.Row="1"
+                                           Text="{Binding Subtitle}"
+                                           Style="{StaticResource TrackItemSubtitleLabelStyle}" />
+                                </Grid>
+
+                                <!-- Кнопка Избранное -->
+                                <Border Grid.Column="2"
+                                        Style="{StaticResource PlayerIconButtonStyle}"
+                                        HorizontalOptions="End"
+                                        VerticalOptions="Center">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type tracks:TracksViewModel}}, Path=ToggleFavoriteCommand, x:DataType=tracks:TracksViewModel}"
+                                            CommandParameter="{Binding .}" />
+                                    </Border.GestureRecognizers>
+
+                                    <Image Style="{StaticResource FavoriteIconImageStyle}"
+                                           InputTransparent="True">
+                                        <Image.Triggers>
+                                            <DataTrigger TargetType="Image"
+                                                         Binding="{Binding Track.IsFavorite}"
+                                                         Value="True">
+                                                <Setter Property="Source" Value="player_heart_active.png" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="Image"
+                                                         Binding="{Binding Track.IsFavorite}"
+                                                         Value="False">
+                                                <Setter Property="Source" Value="player_heart_inactive.png" />
+                                            </DataTrigger>
+                                        </Image.Triggers>
+                                    </Image>
+                                </Border>
+
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Border StrokeShape="RoundRectangle 24"
+                    Stroke="{StaticResource Gray400}"
+                    StrokeThickness="1"
+                    BackgroundColor="#181920"
+                    Padding="18">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding AddAudioTrackCommand}" />
+                </Border.GestureRecognizers>
+
+                <Grid ColumnDefinitions="Auto, *"
+                      ColumnSpacing="16"
+                      VerticalOptions="Center">
+
+                    <Border Grid.Column="0"
+                            StrokeShape="RoundRectangle 16"
+                            BackgroundColor="#262833"
+                            StrokeThickness="0"
+                            WidthRequest="56"
+                            HeightRequest="56"
+                            HorizontalOptions="Center"
+                            VerticalOptions="Center">
+
+                        <Image Source="tab_tracks_inactive.png"
+                               WidthRequest="24"
+                               HeightRequest="24"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+
+                    <VerticalStackLayout Grid.Column="1"
+                                         Spacing="4"
+                                         VerticalOptions="Center">
+                        <Label Text="Выбрать аудиофайл"
+                               FontSize="16"
+                               FontAttributes="Bold"
+                               TextColor="White" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+            <!-- 3. Mini-плеер над нижней панелью навигации -->
+            <components:MiniPlayerView x:Name="MiniPlayer"
+                                       Grid.Row="2"
+                                       BindingContext="{Binding Player}"
+                                       Margin="0,0,0,12"
+                                       VerticalOptions="End" />
+
+        </Grid>
+    </ContentPage.Content>
+</ContentPage>

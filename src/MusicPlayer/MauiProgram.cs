@@ -6,7 +6,10 @@ using Microsoft.Maui.Hosting;
 using MusicPlayer.Features.Importer;
 using MusicPlayer.Features.Player;
 using MusicPlayer.Features.Player.Animations;
+using MusicPlayer.Features.Playlist.Pages;
+using MusicPlayer.Features.Playlist.ViewModels;
 using MusicPlayer.Features.Tracks;
+using MusicPlayer.Infrastructure;
 using MusicPlayer.Playback;
 
 namespace MusicPlayer;
@@ -31,10 +34,12 @@ public static class MauiProgram
         builder.Services.AddSingleton<IAudioPlayer, AndroidAudioPlayer>();
         builder.Services.AddSingleton<ITrackCoverExtractor, AndroidTrackCoverExtractor>();
 #endif
+        builder.Services.AddSingleton<Database>();
+
         builder.Services.AddSingleton<IPlaybackQueue, PlaybackQueue>();
         builder.Services.AddSingleton<IPlayerTransitionService, PlayerTransitionService>();
-        builder.Services.AddSingleton<TrackStorageSettings>();
-        builder.Services.AddSingleton<TrackStorage>();
+        builder.Services.AddSingleton<FileStorageSettings>();
+        builder.Services.AddSingleton<FileStorage>();
         builder.Services.AddSingleton<TrackPicker>();
 
         builder.Services.AddSingleton<PlayerViewModel>();
@@ -43,13 +48,21 @@ public static class MauiProgram
         builder.Services.AddTransient<TracksViewModel>();
         builder.Services.AddTransient<TracksPage>();
 
+        builder.Services.AddTransient<PlaylistChoosingTrackViewModel>();
+        builder.Services.AddTransient<Features.Playlist.Pages.PlaylistChoosingTrackPage>();
+        builder.Services.AddTransient<PlaylistCreationViewModel>();
+        builder.Services.AddTransient<PlaylistCreationPage>();
+        builder.Services.AddTransient<PlaylistsViewModel>();
+        builder.Services.AddTransient<PlaylistsPage>();
+        builder.Services.AddTransient<PlaylistViewModel>();
+        builder.Services.AddTransient<PlaylistPage>();
+
         builder.Services.AddTransient<ImportViewModel>();
         builder.Services.AddTransient<ImportPage>();
 
 #if DEBUG
         builder.Logging.AddDebug();
 #endif
-
         return builder.Build();
     }
 }

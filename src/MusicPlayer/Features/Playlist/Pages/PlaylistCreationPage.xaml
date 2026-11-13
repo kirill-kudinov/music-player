@@ -2,8 +2,71 @@
 
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="MusicPlayer.Features.Playlist.Pages.PlaylistCreationPage">
+             xmlns:viewModels="clr-namespace:MusicPlayer.Features.Playlist.ViewModels"
+             x:Class="MusicPlayer.Features.Playlist.Pages.PlaylistCreationPage"
+             x:DataType="viewModels:PlaylistCreationViewModel">
     <ContentPage.Content>
-        
+        <Grid RowDefinitions="Auto, Auto, Auto">
+            <Border Grid.Row="0"
+                    Style="{StaticResource SearchBarBorderStyle}">
+                <Grid ColumnDefinitions="Auto"
+                      ColumnSpacing="10"
+                      VerticalOptions="Center">
+
+                    <Entry Grid.Column="0"
+                           Text="{Binding PlaylistName, Mode=TwoWay}"
+                           Placeholder="Название..."
+                           Style="{StaticResource SearchEntryStyle}" />
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="1"
+                    StrokeShape="RoundRectangle 24"
+                    Stroke="{StaticResource Gray400}"
+                    StrokeThickness="1"
+                    BackgroundColor="#181920"
+                    Padding="18">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding CreateCommand}" />
+                </Border.GestureRecognizers>
+
+                <Grid ColumnDefinitions="Auto"
+                      VerticalOptions="Center">
+
+                    <VerticalStackLayout Grid.Column="0"
+                                         Spacing="4"
+                                         VerticalOptions="Center">
+                        <Label Text="Создать"
+                               FontSize="16"
+                               FontAttributes="Bold"
+                               TextColor="White" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="2"
+                    StrokeShape="RoundRectangle 24"
+                    Stroke="{StaticResource Gray400}"
+                    StrokeThickness="1"
+                    BackgroundColor="#181920"
+                    Padding="18">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding CancelCommand}" />
+                </Border.GestureRecognizers>
+
+                <Grid ColumnDefinitions="Auto"
+                      VerticalOptions="Center">
+
+                    <VerticalStackLayout Grid.Column="0"
+                                         Spacing="4"
+                                         VerticalOptions="Center">
+                        <Label Text="Отменить"
+                               FontSize="16"
+                               FontAttributes="Bold"
+                               TextColor="White" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+        </Grid>
     </ContentPage.Content>
 </ContentPage>
