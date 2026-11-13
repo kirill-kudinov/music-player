@@ -17,7 +17,7 @@ public static class PlaylistMapper
 
     public static Playlist ToEntity(PlaylistItem playlistItem, List<AudioTrack> audioTracks)
     {
-        return Playlist.Create(
+        return Playlist.CreateFromDb(
             playlistItem.Id,
             playlistItem.Name,
             audioTracks

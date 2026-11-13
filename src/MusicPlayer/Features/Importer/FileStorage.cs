@@ -2,14 +2,10 @@ using System.IO;
 using System.Threading.Tasks;
 using MusicPlayer.Core.AudioTracks;
 using MusicPlayer.Core.Primitives;
-using MusicPlayer.Infrastructure;
 
 namespace MusicPlayer.Features.Importer;
 
-public sealed class FileStorage(
-    FileStorageSettings fileStorageSettings,
-    Database database
-)
+public sealed class FileStorage(FileStorageSettings fileStorageSettings)
 {
     public async Task<Result<string>> AddAsync(string relativePath, FileStream content)
     {
