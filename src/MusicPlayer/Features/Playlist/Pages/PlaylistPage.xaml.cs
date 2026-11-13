@@ -13,6 +13,7 @@ public partial class PlaylistPage
         set
         {
             field = value;
+            OnPropertyChanged();
         }
     }
 
@@ -36,7 +37,7 @@ public partial class PlaylistPage
             MiniPlayer.PlayCollapseInAnimationAsync);
     }
 
-    protected override void OnAppearing()
+    protected override async void OnAppearing()
     {
         base.OnAppearing();
 
@@ -45,6 +46,6 @@ public partial class PlaylistPage
             MiniPlayer.PlayCollapseInAnimationAsync);
 
         _playlistViewModel.Playlist = Playlist;
-        _playlistViewModel.LoadTracks();
+        await _playlistViewModel.LoadTracksAsync();
     }
 }

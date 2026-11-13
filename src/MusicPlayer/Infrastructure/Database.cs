@@ -114,6 +114,30 @@ public sealed class Database
         }));
     }
 
+    public async Task<List<AudioTrack>> GetPlaylistAudioTracks(int playlistId)
+    {
+        var connections = await _database!
+            .Table<PlaylistAudioTracksItem>()
+            .Where(i => i.PlaylistId == playlistId)
+            .ToListAsync();
+
+        var audioTracks = new List<AudioTrack>();
+
+        foreach (var connection in connections)
+        {
+            var audioTrack = _database
+                .Table<AudioTrackItem>()
+                .Where(i => i.Id == connection.AudioTrackId)
+                .FirstOrDefaultAsync();
+
+            if (audioTrack is null) continue;
+
+            audioTracks.Add(AudioTrackMapper.ToEntity(await audioTrack));
+        }
+
+        return audioTracks;
+    }
+
     private static bool MapToBool(int result)
     {
         return result switch

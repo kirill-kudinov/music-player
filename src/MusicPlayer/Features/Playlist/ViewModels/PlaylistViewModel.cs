@@ -9,6 +9,7 @@ using Microsoft.Maui.Controls;
 using MusicPlayer.Features.Player;
 using MusicPlayer.Features.Playlist.Pages;
 using MusicPlayer.Features.Tracks;
+using MusicPlayer.Infrastructure;
 using MusicPlayer.Playback;
 
 namespace MusicPlayer.Features.Playlist.ViewModels;
@@ -17,7 +18,8 @@ public sealed partial class PlaylistViewModel(
     ITrackCoverExtractor coverExtractor,
     IPlaybackQueue playbackQueue,
     IAudioPlayer audioPlayer,
-    PlayerViewModel playerViewModel
+    PlayerViewModel playerViewModel,
+    Database database
 ) : ObservableObject
 {
     private readonly List<TrackItemViewModel> _allTracks = [];
@@ -34,7 +36,7 @@ public sealed partial class PlaylistViewModel(
         ApplyFilter(value);
     }
 
-    public void LoadTracks()
+    public async Task LoadTracksAsync()
     {
         Player.Tick();
 
@@ -42,7 +44,7 @@ public sealed partial class PlaylistViewModel(
 
         _allTracks.Clear();
 
-        foreach (var audioTrack in Playlist.Tracks)
+        foreach (var audioTrack in await database.GetPlaylistAudioTracks(Playlist.Id))
         {
             var cover = coverExtractor.ExtractCover(audioTrack.ContentUri);
             _allTracks.Add(new TrackItemViewModel(audioTrack.Id, audioTrack, cover));
