@@ -25,7 +25,10 @@ public sealed partial class PlaylistChoosingTrackViewModel(
     private readonly List<TrackItemViewModel> _allTracks = [];
 
     [RelayCommand]
-    private static void ToggleFavorite(TrackItemViewModel? item) => item?.Track.ToggleFavorite();
+    private static void ToggleFavorite(TrackItemViewModel? item)
+    {
+        item?.Track.ToggleFavorite();
+    }
 
     [RelayCommand]
     private async Task ChooseAsync(TrackItemViewModel audioTrack)
@@ -34,7 +37,10 @@ public sealed partial class PlaylistChoosingTrackViewModel(
         await Shell.Current.GoToAsync("..");
     }
 
-    partial void OnSearchQueryChanged(string value) => ApplyFilter(value);
+    partial void OnSearchQueryChanged(string value)
+    {
+        ApplyFilter(value);
+    }
 
     public async Task LoadTracksAsync()
     {
@@ -49,10 +55,7 @@ public sealed partial class PlaylistChoosingTrackViewModel(
             hasNewTracks = true;
         }
 
-        if (hasNewTracks || FilteredTracks.Count == 0)
-        {
-            ApplyFilter(SearchQuery);
-        }
+        if (hasNewTracks || FilteredTracks.Count == 0) ApplyFilter(SearchQuery);
     }
 
     private void ApplyFilter(string? query)
@@ -66,9 +69,6 @@ public sealed partial class PlaylistChoosingTrackViewModel(
                 (x.Track.Title?.Contains(trimmed, StringComparison.OrdinalIgnoreCase) ?? false) ||
                 (x.Track.Artist?.Contains(trimmed, StringComparison.OrdinalIgnoreCase) ?? false));
 
-        foreach (var item in source)
-        {
-            FilteredTracks.Add(item);
-        }
+        foreach (var item in source) FilteredTracks.Add(item);
     }
 }

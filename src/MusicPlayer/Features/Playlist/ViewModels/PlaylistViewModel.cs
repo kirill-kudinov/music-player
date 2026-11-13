@@ -49,10 +49,7 @@ public sealed partial class PlaylistViewModel(
             hasNewTracks = true;
         }
 
-        if (hasNewTracks || FilteredTracks.Count == 0)
-        {
-            ApplyFilter(SearchQuery);
-        }
+        if (hasNewTracks || FilteredTracks.Count == 0) ApplyFilter(SearchQuery);
     }
 
     [RelayCommand]
@@ -66,17 +63,13 @@ public sealed partial class PlaylistViewModel(
     [RelayCommand]
     private static void ToggleFavorite(TrackItemViewModel? item)
     {
-        if (item is null)
-            return;
-
-        item.Track.ToggleFavorite();
+        item?.Track.ToggleFavorite();
     }
 
     [RelayCommand]
     private async Task OpenTrackAsync(TrackItemViewModel? item)
     {
-        if (item is null)
-            return;
+        if (item is null) return;
 
         var queueTracks = _allTracks.Select(x => x.Track).ToList();
         playbackQueue.SetTracks(queueTracks, item.Track);
@@ -97,9 +90,6 @@ public sealed partial class PlaylistViewModel(
                 (x.Track.Title?.Contains(trimmed, StringComparison.OrdinalIgnoreCase) ?? false) ||
                 (x.Track.Artist?.Contains(trimmed, StringComparison.OrdinalIgnoreCase) ?? false));
 
-        foreach (var item in source)
-        {
-            FilteredTracks.Add(item);
-        }
+        foreach (var item in source) FilteredTracks.Add(item);
     }
 }

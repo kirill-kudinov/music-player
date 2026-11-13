@@ -14,7 +14,10 @@ public sealed partial class PlaylistCreationViewModel(
     [ObservableProperty] public partial string PlaylistName { get; set; } = string.Empty;
 
     [RelayCommand]
-    private async Task CancelAsync() => await Shell.Current.GoToAsync($"//{nameof(PlaylistsPage)}");
+    private async Task CancelAsync()
+    {
+        await Shell.Current.GoToAsync($"//{nameof(PlaylistsPage)}");
+    }
 
     [RelayCommand]
     private async Task CreateAsync()
