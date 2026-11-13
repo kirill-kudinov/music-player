@@ -5,16 +5,19 @@ namespace MusicPlayer.Infrastructure;
 
 public static class AudioTrackMapper
 {
-    public static AudioTrackItem ToItem(AudioTrack audioTrack) => new()
+    public static AudioTrackItem ToItem(AudioTrack audioTrack)
     {
-        Id = audioTrack.Id,
-        Title = audioTrack.Title,
-        Artist = audioTrack.Artist,
-        Duration = audioTrack.Duration.ToString(),
-        IsFavorite = audioTrack.IsFavorite,
-        Uri = audioTrack.ContentUri.ToString(),
-        AudioFormat = AudioFormatMapper.ToString(audioTrack.Format)
-    };
+        return new AudioTrackItem
+        {
+            Id = audioTrack.Id,
+            Title = audioTrack.Title,
+            Artist = audioTrack.Artist,
+            Duration = audioTrack.Duration.ToString(),
+            IsFavorite = audioTrack.IsFavorite,
+            Uri = audioTrack.ContentUri.ToString(),
+            AudioFormat = AudioFormatMapper.ToString(audioTrack.Format)
+        };
+    }
 
     public static AudioTrack ToEntity(AudioTrackItem audioTrackItem)
     {

@@ -6,15 +6,21 @@ namespace MusicPlayer.Infrastructure;
 
 public static class PlaylistMapper
 {
-    public static PlaylistItem ToItem(Playlist playlist) => new()
+    public static PlaylistItem ToItem(Playlist playlist)
     {
-        Id = playlist.Id,
-        Name = playlist.Name
-    };
+        return new PlaylistItem
+        {
+            Id = playlist.Id,
+            Name = playlist.Name
+        };
+    }
 
-    public static Playlist ToEntity(PlaylistItem playlistItem, List<AudioTrack> audioTracks) => Playlist.Create(
-        playlistItem.Id,
-        playlistItem.Name,
-        audioTracks
-    );
+    public static Playlist ToEntity(PlaylistItem playlistItem, List<AudioTrack> audioTracks)
+    {
+        return Playlist.Create(
+            playlistItem.Id,
+            playlistItem.Name,
+            audioTracks
+        );
+    }
 }

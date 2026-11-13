@@ -5,7 +5,7 @@ namespace MusicPlayer.Infrastructure;
 
 public sealed class AudioTrackItem
 {
-    [PrimaryKey, AutoIncrement] public int Id { get; set; }
+    [PrimaryKey] [AutoIncrement] public int Id { get; set; }
     [ForeignKey(nameof(PlaylistItem.Id))] public int PlaylistId { get; set; }
     public string Title { get; set; }
     public string Artist { get; set; }

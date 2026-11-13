@@ -82,18 +82,6 @@ public sealed class Database
         var playlistItems = await _database!.Table<PlaylistItem>().ToListAsync();
         var playlists = new List<Playlist>();
 
-        // foreach (var playlistItem in playlistItems)
-        // {
-        //     var audioTrackItems = await _database!
-        //         .Table<AudioTrackItem>()
-        //         .Where(i => i.PlaylistId == playlistItem.Id)
-        //         .ToListAsync();
-        //
-        //     var audioTracks = audioTrackItems.Select(AudioTrackMapper.ToEntity).ToList();
-        //
-        //     playlists.Add(PlaylistMapper.ToEntity(playlistItem, audioTracks));
-        // }
-
         foreach (var playlistItem in playlistItems)
         {
             var connections = await _database!
@@ -104,13 +92,11 @@ public sealed class Database
             var audioTracks = new List<AudioTrack>();
 
             foreach (var connection in connections)
-            {
                 audioTracks.Add(AudioTrackMapper.ToEntity(await _database!
                     .Table<AudioTrackItem>()
                     .Where(i => i.Id == connection.AudioTrackId)
                     .FirstAsync()
                 ));
-            }
 
             playlists.Add(PlaylistMapper.ToEntity(playlistItem, audioTracks));
         }
