@@ -41,6 +41,6 @@ public partial class PlaylistPage : IQueryAttributable
         if (query["Playlist"] is not Core.Playlist.Playlist playlist) return;
 
         _playlistViewModel.Playlist = playlist;
-        _playlistViewModel.LoadTracks(_playlistViewModel.Playlist);
+        _playlistViewModel.LoadTracks();
     }
 }

@@ -14,9 +14,9 @@ public sealed partial class PlaylistsViewModel(
 ) : ObservableObject
 {
     [ObservableProperty] public partial ObservableCollection<Core.Playlist.Playlist> Playlists { get; set; } = [];
-
+    
     [RelayCommand]
-    private async Task OpenPlaylist(Core.Playlist.Playlist? playlist)
+    private async Task OpenPlaylistAsync(Core.Playlist.Playlist? playlist)
     {
         if (playlist is null) return;
 
@@ -30,13 +30,7 @@ public sealed partial class PlaylistsViewModel(
     }
 
     [RelayCommand]
-    private async Task CreateNewPlaylist()
-    {
-        await Shell.Current.GoToAsync(nameof(PlaylistCreationPage));
-    }
+    private async Task CreateNewPlaylistAsync() => await Shell.Current.GoToAsync(nameof(PlaylistCreationPage));
 
-    public async Task LoadPlaylists()
-    {
-        Playlists = [.. await database.GetPlaylists()];
-    }
+    public async Task LoadPlaylistsAsync() => Playlists = [.. await database.GetPlaylists()];
 }

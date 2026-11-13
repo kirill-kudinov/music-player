@@ -6,9 +6,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Maui.Controls;
-using MusicPlayer.Core.AudioTracks;
 using MusicPlayer.Features.Player;
-using MusicPlayer.Features.Playlist.Pages;
 using MusicPlayer.Features.Tracks;
 using MusicPlayer.Infrastructure;
 using MusicPlayer.Playback;
@@ -20,20 +18,25 @@ public sealed partial class PlaylistChoosingTrackViewModel(
     ITrackCoverExtractor coverExtractor,
     PlayerViewModel playerViewModel) : ObservableObject
 {
+    public int PlaylistId { get; set; }
+    private PlayerViewModel Player { get; } = playerViewModel;
+    [ObservableProperty] public partial string SearchQuery { get; set; } = string.Empty;
+    public ObservableCollection<TrackItemViewModel> FilteredTracks { get; } = [];
     private readonly List<TrackItemViewModel> _allTracks = [];
 
-    public Core.Playlist.Playlist Playlist { get; set; }
-    [ObservableProperty] public partial string SearchQuery { get; set; } = string.Empty;
-    public PlayerViewModel Player { get; } = playerViewModel;
+    [RelayCommand]
+    private static void ToggleFavorite(TrackItemViewModel? item) => item?.Track.ToggleFavorite();
 
-    public ObservableCollection<TrackItemViewModel> FilteredTracks { get; } = [];
-
-    partial void OnSearchQueryChanged(string value)
+    [RelayCommand]
+    private async Task ChooseAsync(TrackItemViewModel audioTrack)
     {
-        ApplyFilter(value);
+        await database.AddAudioTrackToPlaylist(audioTrack.Id, PlaylistId);
+        await Shell.Current.GoToAsync("..");
     }
 
-    public async Task LoadTracks()
+    partial void OnSearchQueryChanged(string value) => ApplyFilter(value);
+
+    public async Task LoadTracksAsync()
     {
         Player.Tick();
 
@@ -52,21 +55,12 @@ public sealed partial class PlaylistChoosingTrackViewModel(
         }
     }
 
-    [RelayCommand]
-    private static void ToggleFavorite(TrackItemViewModel? item)
-    {
-        if (item is null)
-            return;
-
-        item.Track.ToggleFavorite();
-    }
-
     private void ApplyFilter(string? query)
     {
         FilteredTracks.Clear();
 
-        string trimmed = query?.Trim() ?? string.Empty;
-        IEnumerable<TrackItemViewModel> source = string.IsNullOrEmpty(trimmed)
+        var trimmed = query?.Trim() ?? string.Empty;
+        var source = string.IsNullOrEmpty(trimmed)
             ? _allTracks
             : _allTracks.Where(x =>
                 (x.Track.Title?.Contains(trimmed, StringComparison.OrdinalIgnoreCase) ?? false) ||
@@ -76,13 +70,5 @@ public sealed partial class PlaylistChoosingTrackViewModel(
         {
             FilteredTracks.Add(item);
         }
-    }
-
-    [RelayCommand]
-    private async Task Choose(TrackItemViewModel audioTrack)
-    {
-        var foundAudioTrack = await database.GetAudioTrack(audioTrack.Id);
-        await database.AddAudioTrackToPlaylist(foundAudioTrack, Playlist);
-        await Shell.Current.GoToAsync($"//{nameof(PlaylistsPage)}");
     }
 }

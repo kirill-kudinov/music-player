@@ -20,6 +20,6 @@ public partial class PlaylistsPage : ContentPage
     {
         base.OnAppearing();
 
-        await PlaylistsViewModel.LoadPlaylists();
+        await PlaylistsViewModel.LoadPlaylistsAsync();
     }
 }

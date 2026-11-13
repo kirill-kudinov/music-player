@@ -21,26 +21,28 @@ public sealed partial class PlaylistViewModel(
 ) : ObservableObject
 {
     private readonly List<TrackItemViewModel> _allTracks = [];
-    
-    public Core.Playlist.Playlist Playlist { get; set; }
+
+    public required Core.Playlist.Playlist Playlist { get; set; }
 
     [ObservableProperty] public partial string SearchQuery { get; set; } = string.Empty;
     public PlayerViewModel Player { get; } = playerViewModel;
 
-    public ObservableCollection<TrackItemViewModel> FilteredTracks { get; } = [];
+    [ObservableProperty] public partial ObservableCollection<TrackItemViewModel> FilteredTracks { get; set; } = [];
 
     partial void OnSearchQueryChanged(string value)
     {
         ApplyFilter(value);
     }
 
-    public void LoadTracks(Core.Playlist.Playlist passedPlaylist)
+    public void LoadTracks()
     {
         Player.Tick();
 
         var hasNewTracks = false;
 
-        foreach (var audioTrack in passedPlaylist.Tracks)
+        _allTracks.Clear();
+
+        foreach (var audioTrack in Playlist.Tracks)
         {
             var cover = coverExtractor.ExtractCover(audioTrack.ContentUri);
             _allTracks.Add(new TrackItemViewModel(audioTrack.Id, audioTrack, cover));
@@ -57,11 +59,7 @@ public sealed partial class PlaylistViewModel(
     private async Task AddAudioTrack()
     {
         await Shell.Current.GoToAsync(
-            nameof(PlaylistChoosingTrackPage),
-            new Dictionary<string, object>
-            {
-                { "Playlist", Playlist }
-            }
+            $"{nameof(PlaylistChoosingTrackPage)}?PlaylistId={Playlist.Id}"
         );
     }
 

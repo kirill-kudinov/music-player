@@ -104,13 +104,13 @@ public sealed class Database
         return playlists;
     }
 
-    public async Task<bool> AddAudioTrackToPlaylist(AudioTrack audioTrack, Playlist playlist)
+    public async Task<bool> AddAudioTrackToPlaylist(int audioTrackId, int playlistId)
     {
         await Init();
         return MapToBool(await _database!.InsertAsync(new PlaylistAudioTracksItem
         {
-            AudioTrackId = audioTrack.Id,
-            PlaylistId = playlist.Id
+            AudioTrackId = audioTrackId,
+            PlaylistId = playlistId
         }));
     }
 
