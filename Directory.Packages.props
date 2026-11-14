@@ -1,23 +1,20 @@
 <Project>
-    <PropertyGroup>
-        <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-        <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
-    </PropertyGroup>
-
-    <ItemGroup>
-        <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2"/>
-        <PackageVersion Include="CommunityToolkit.Maui" Version="15.0.1"/>
-        <PackageVersion Include="CommunityToolkit.Maui.MediaElement" Version="10.0.0"/>
-        <PackageVersion Include="TagLibSharp" Version="2.3.0" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <PackageVersion Include="xunit.v3.mtp-v2" Version="4.0.0"/>
-    </ItemGroup>
-    
-
-    <ItemGroup>
-        <PackageVersion Include="Microsoft.Maui.Controls" Version="10.0.110"/>
-        <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.12"/>
-    </ItemGroup>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageVersion Include="CommunityToolkit.Maui" Version="15.0.1" />
+    <PackageVersion Include="CommunityToolkit.Maui.MediaElement" Version="10.0.0" />
+    <PackageVersion Include="sqlite-net-pcl" Version="1.11.285" />
+    <PackageVersion Include="TagLibSharp" Version="2.3.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageVersion Include="xunit.v3.mtp-v2" Version="4.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.Maui.Controls" Version="10.0.110" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.12" />
+  </ItemGroup>
 </Project>

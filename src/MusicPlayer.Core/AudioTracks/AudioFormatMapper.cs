@@ -1,9 +1,9 @@
 namespace MusicPlayer.Core.AudioTracks;
 
-public static class FileTypeMapper
+public static class AudioFormatMapper
 {
-    public static AudioFormat ToEntity(string? fileType) =>
-        fileType?.Trim().ToLowerInvariant() switch
+    public static AudioFormat ToEntity(string? audioFormat) =>
+        audioFormat?.Trim().ToLowerInvariant() switch
         {
             "audio/mp4" or "audio/aac" => AudioFormat.Aac,
             "audio/flac" => AudioFormat.Flac,
@@ -11,6 +11,13 @@ public static class FileTypeMapper
             "audio/opus" => AudioFormat.Opus,
             _ => AudioFormat.Unknown
         };
-    
-    public static string ToString(AudioFormat )
+
+    public static string ToString(AudioFormat? audioFormat) => audioFormat switch
+    {
+        AudioFormat.Aac => "audio/aac",
+        AudioFormat.Flac => "audio/flac",
+        AudioFormat.Ogg => "audio/ogg",
+        AudioFormat.Opus => "audio/opus",
+        _ => "audio/unknown"
+    };
 }

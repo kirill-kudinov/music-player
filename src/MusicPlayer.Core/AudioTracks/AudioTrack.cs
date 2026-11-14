@@ -7,6 +7,7 @@ namespace MusicPlayer.Core.AudioTracks;
 
 public partial class AudioTrack : ObservableObject
 {
+    public int Id { get; }
     public AudioFormat Format { get; }
     public Uri ContentUri { get; }
 
@@ -22,15 +23,14 @@ public partial class AudioTrack : ObservableObject
         private set => field = string.IsNullOrWhiteSpace(value) ? UnknowArtist : value.Trim();
     }
 
-
-    [ObservableProperty] private bool _isFavorite;
-
+    [ObservableProperty] public partial bool IsFavorite { get; set; }
     public TimeSpan Duration { get; private set; }
 
     private const string UnknowArtist = "Неизвестный исполнитель";
     private const string Untitled = "Без названия";
 
     private AudioTrack(
+        int id,
         Uri contentUri,
         AudioFormat format,
         string? artist,
@@ -38,6 +38,7 @@ public partial class AudioTrack : ObservableObject
         TimeSpan duration,
         bool isFavorite)
     {
+        Id = id;
         ContentUri = contentUri;
         Format = format;
         Artist = artist;
@@ -68,6 +69,7 @@ public partial class AudioTrack : ObservableObject
 
 
     public static Result<AudioTrack> Create(
+        int id,
         Uri contentUri,
         AudioFormat format,
         string? artist,
@@ -80,6 +82,7 @@ public partial class AudioTrack : ObservableObject
             return Result.Fail(AudioTrackErrors.NegativeOrZeroDuration);
 
         return Result.Ok(new AudioTrack(
+            id,
             contentUri,
             format,
             artist,
@@ -89,18 +92,20 @@ public partial class AudioTrack : ObservableObject
         ));
     }
 
-    public static Result<AudioTrack> Create(string filePath)
+    public static AudioTrack Create(string filePath)
     {
         var file = TagLib.File.Create(filePath);
 
         var uri = new Uri(filePath);
 
-        return Create(
+        return new AudioTrack(
+            0,
             uri,
             GetFormat(filePath),
             file.Tag.FirstAlbumArtist,
             Path.GetFileNameWithoutExtension(filePath),
-            file.Properties.Duration
+            file.Properties.Duration,
+            false
         );
     }
 
