@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Maui;
+using CommunityToolkit.Maui;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Controls.Hosting;
@@ -6,6 +6,8 @@ using Microsoft.Maui.Hosting;
 using MusicPlayer.Features.Importer;
 using MusicPlayer.Features.Player;
 using MusicPlayer.Features.Player.Animations;
+using MusicPlayer.Features.Playlists;
+using MusicPlayer.Features.Playlists.Data;
 using MusicPlayer.Features.Tracks;
 using MusicPlayer.Playback;
 
@@ -37,11 +39,21 @@ public static class MauiProgram
         builder.Services.AddSingleton<TrackStorage>();
         builder.Services.AddSingleton<TrackPicker>();
 
+        builder.Services.AddSingleton<PlaylistDatabaseSettings>();
+        builder.Services.AddSingleton<PlaylistCoverStorage>();
+        builder.Services.AddSingleton<IPlaylistRepository, SqlitePlaylistRepository>();
+
         builder.Services.AddSingleton<PlayerViewModel>();
         builder.Services.AddTransient<PlayerPage>();
 
         builder.Services.AddSingleton<TracksViewModel>();
         builder.Services.AddSingleton<TracksPage>();
+
+        builder.Services.AddSingleton<PlaylistsViewModel>();
+        builder.Services.AddSingleton<PlaylistsPage>();
+
+        builder.Services.AddTransient<PlaylistDetailViewModel>();
+        builder.Services.AddTransient<PlaylistDetailPage>();
 
         builder.Services.AddTransient<ImportViewModel>();
         builder.Services.AddTransient<ImportPage>();

@@ -133,5 +133,9 @@
 
         <!-- 4. Выдвигающийся снизу Bottom Sheet действий с треком в стиле YouTube Music -->
         <trackComponents:TrackOptionsBottomSheet IsOpen="{Binding IsTrackOptionsPopupVisible}" />
+
+        <!-- 5. Выбор целевого плейлиста -->
+        <trackComponents:SelectPlaylistForTrackSheet IsOpen="{Binding IsSelectPlaylistSheetVisible}" />
+        
     </Grid>
 </ContentPage>

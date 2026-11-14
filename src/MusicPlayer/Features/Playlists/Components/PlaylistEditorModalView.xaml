@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:playlists="clr-namespace:MusicPlayer.Features.Playlists"
+             x:Class="MusicPlayer.Features.Playlists.Components.PlaylistEditorModalView"
+             x:DataType="playlists:PlaylistsViewModel"
+             IsVisible="False"
+             InputTransparent="True"
+             ZIndex="30">
+
+    <Grid>
+        <Grid x:Name="BackdropScrim"
+              BackgroundColor="{StaticResource PopupScrimColor}"
+              Opacity="0"
+              HorizontalOptions="Fill"
+              VerticalOptions="Fill">
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding CloseEditorModalCommand}" />
+            </Grid.GestureRecognizers>
+        </Grid>
+
+        <Border x:Name="ModalCard"
+                Style="{StaticResource PlaylistModalCardStyle}"
+                Opacity="0"
+                Scale="0.94"
+                HorizontalOptions="Fill"
+                VerticalOptions="Center"
+                Margin="20,0">
+
+            <VerticalStackLayout Spacing="16">
+                <Label Text="{Binding ModalTitle}"
+                       Style="{StaticResource PlaylistModalTitleLabelStyle}" />
+
+                <Grid ColumnDefinitions="Auto, *"
+                      ColumnSpacing="14"
+                      VerticalOptions="Center">
+
+                    <Border Grid.Column="0"
+                            WidthRequest="88"
+                            HeightRequest="88"
+                            Style="{StaticResource PlaylistModalCoverBorderStyle}">
+                        <Image Source="{Binding EditorCoverPreview}"
+                               Aspect="AspectFill"
+                               HorizontalOptions="Fill"
+                               VerticalOptions="Fill" />
+                    </Border>
+
+                    <Grid Grid.Column="1"
+                          VerticalOptions="Center">
+                        <Button IsVisible="{Binding HasNoCustomCover}"
+                                Text="Выбрать фото с устройства"
+                                Command="{Binding PickCoverPhotoCommand}"
+                                Style="{StaticResource PlaylistModalSecondaryButtonStyle}"
+                                HorizontalOptions="Fill" />
+
+                        <Button IsVisible="{Binding HasCustomCover}"
+                                Text="Удалить обложку"
+                                Command="{Binding RemoveCoverPhotoCommand}"
+                                Style="{StaticResource PlaylistModalDeleteConfirmButtonStyle}"
+                                HorizontalOptions="Fill" />
+                    </Grid>
+                </Grid>
+
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="Название альбома"
+                           Style="{StaticResource PlaylistModalFieldLabelStyle}" />
+
+                    <Border Style="{StaticResource PlaylistModalInputBorderStyle}">
+                        <Entry Text="{Binding EditorTitle, Mode=TwoWay}"
+                               Placeholder="Введите название..."
+                               MaxLength="100"
+                               ReturnType="Done"
+                               Style="{StaticResource SearchEntryStyle}" />
+                    </Border>
+                </VerticalStackLayout>
+
+                <Grid Margin="0,2,0,0">
+
+                    <Grid IsVisible="{Binding IsDefaultActionRowVisible}"
+                          ColumnDefinitions="Auto, *, *"
+                          ColumnSpacing="10">
+
+                        <Border Grid.Column="0"
+                                IsVisible="{Binding CanDeleteEditingPlaylist}"
+                                Style="{StaticResource PlaylistModalDeleteIconBorderStyle}"
+                                VerticalOptions="Center">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding RequestDeletePlaylistCommand}" />
+                            </Border.GestureRecognizers>
+
+                            <Image Source="popup_delete.png"
+                                   WidthRequest="20"
+                                   HeightRequest="20"
+                                   Aspect="AspectFit"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center"
+                                   InputTransparent="True" />
+                        </Border>
+
+                        <Button Grid.Column="1"
+                                Text="Отмена"
+                                Command="{Binding CloseEditorModalCommand}"
+                                Style="{StaticResource PlaylistModalCancelButtonStyle}" />
+
+                        <Button Grid.Column="2"
+                                Text="Сохранить"
+                                Command="{Binding SavePlaylistCommand}"
+                                IsEnabled="{Binding CanSaveModal}"
+                                Style="{StaticResource PlaylistModalSaveButtonStyle}" />
+                    </Grid>
+
+                    <Grid IsVisible="{Binding IsDeleteConfirmationVisible}"
+                          ColumnDefinitions="*, Auto, Auto"
+                          ColumnSpacing="10">
+
+                        <Label Grid.Column="0"
+                               Text="Удалить плейлист?"
+                               Style="{StaticResource PlaylistModalDeleteConfirmLabelStyle}" />
+
+                        <Button Grid.Column="1"
+                                Text="Отмена"
+                                Command="{Binding CancelDeletePlaylistCommand}"
+                                Style="{StaticResource PlaylistModalCancelButtonStyle}"
+                                Padding="14,0" />
+
+                        <Button Grid.Column="2"
+                                Text="Удалить"
+                                Command="{Binding ConfirmDeletePlaylistCommand}"
+                                Style="{StaticResource PlaylistModalDeleteConfirmButtonStyle}" />
+                    </Grid>
+
+                </Grid>
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+</ContentView>

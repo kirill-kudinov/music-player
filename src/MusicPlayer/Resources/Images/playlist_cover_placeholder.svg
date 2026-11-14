@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Фирменный глубокий градиент приложения (#7C1919 -> #15151C -> #0B0B0E) -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3A1216" />
+      <stop offset="48%" stop-color="#15151C" />
+      <stop offset="100%" stop-color="#0B0B0E" />
+    </linearGradient>
+
+    <!-- Тёплое акцентное свечение в стиле обложки плеера -->
+    <radialGradient id="accentGlow" cx="25%" cy="20%" r="75%">
+      <stop offset="0%" stop-color="#7C1919" stop-opacity="0.45" />
+      <stop offset="55%" stop-color="#450F12" stop-opacity="0.15" />
+      <stop offset="100%" stop-color="#0B0B0E" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Мягкое центральное свечение под эмблемой -->
+    <radialGradient id="centerGlow" cx="50%" cy="50%" r="42%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.06" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- Базовый слой и градиенты -->
+  <rect width="512" height="512" fill="url(#bgGrad)" />
+  <rect width="512" height="512" fill="url(#accentGlow)" />
+  <rect width="512" height="512" fill="url(#centerGlow)" />
+
+  <!-- Фоновые волны (отсылка к player_fluent_wave.svg) -->
+  <g fill="none" stroke="#FFFFFF" stroke-linecap="round">
+    <path d="M -20 350 C 90 295, 175 405, 275 350 C 375 295, 450 395, 532 345" stroke-width="2" stroke-opacity="0.06" />
+    <path d="M -20 380 C 95 325, 180 435, 280 380 C 380 325, 455 425, 532 375" stroke-width="1.5" stroke-opacity="0.04" />
+  </g>
+
+
+  <!-- Фирменная монограмма Fluent (адаптирована из appiconfg.svg под деликатный UI-штрих) -->
+  <g transform="translate(154, 154) scale(0.4)" fill="none" stroke="#FFFFFF" stroke-linecap="round">
+    <!-- Текучий штрих 'f' / скрипичного ключа -->
+    <path d="M 190 330
+             C 190 372, 222 395, 258 395
+             C 300 395, 332 360, 332 312
+             L 332 185
+             C 332 135, 368 112, 412 112" stroke-width="26" stroke-opacity="0.78" />
+    <!-- Звуковая волна -->
+    <path d="M 140 275
+             C 170 245, 215 238, 260 255
+             C 295 268, 325 268, 358 236" stroke-width="20" stroke-opacity="0.48" />
+  </g>
+
+  <!-- Тонкая внутренняя рамка BorderSubtle (#1AFFFFFF) -->
+  <rect x="0.75" y="0.75" width="510.5" height="510.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.10" stroke-width="1.5" />
+</svg>

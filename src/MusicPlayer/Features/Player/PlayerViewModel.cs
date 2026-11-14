@@ -6,6 +6,7 @@ using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using MusicPlayer.Core.AudioTracks;
 using MusicPlayer.Features.Player.Animations;
+using MusicPlayer.Features.Playlists.Data;
 using MusicPlayer.Playback;
 
 namespace MusicPlayer.Features.Player;
@@ -19,6 +20,7 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
     private readonly IPlaybackQueue _queue;
     private readonly ITrackCoverExtractor _coverExtractor;
     private readonly IPlayerTransitionService _transitionService;
+    private readonly IPlaylistRepository _playlistRepository;
 
     private bool _isUserSeeking;
     private bool _isSyncingFromEngine;
@@ -106,12 +108,14 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
         IAudioPlayer player,
         IPlaybackQueue queue,
         ITrackCoverExtractor coverExtractor,
-        IPlayerTransitionService transitionService)
+        IPlayerTransitionService transitionService,
+        IPlaylistRepository playlistRepository)
     {
         _player = player;
         _queue = queue;
         _coverExtractor = coverExtractor;
         _transitionService = transitionService;
+        _playlistRepository = playlistRepository;
 
         _player.PlaybackCompleted += OnPlaybackCompleted;
         SyncState();
@@ -344,6 +348,7 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
 
         CurrentTrack.ToggleFavorite();
         SyncFavoriteState();
+        _ = _playlistRepository.SetTrackFavoriteAsync(CurrentTrack, CurrentTrack.IsFavorite);
     }
 
     [RelayCommand]

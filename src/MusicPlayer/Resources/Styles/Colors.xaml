@@ -56,4 +56,10 @@
     <Color x:Key="DangerAccent">#FF453A</Color>
     <Color x:Key="DangerTouchOverlay">#26FF453A</Color>
 
+
+    <!-- Токены карточек и модального окна плейлистов -->
+    <Color x:Key="PlaylistOverlayBadgeColor">#99000000</Color>
+    <Color x:Key="PlaylistEditButtonColor">#8C000000</Color>
+    <Color x:Key="PlaylistModalSecondaryBg">#252532</Color>
+
 </ResourceDictionary>

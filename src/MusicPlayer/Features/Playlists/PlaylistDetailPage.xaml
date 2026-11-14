@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:playlists="clr-namespace:MusicPlayer.Features.Playlists"
+             xmlns:playlistComponents="clr-namespace:MusicPlayer.Features.Playlists.Components"
+             xmlns:tracks="clr-namespace:MusicPlayer.Features.Tracks"
+             xmlns:components="clr-namespace:MusicPlayer.Features.Player.Components"
+             x:Class="MusicPlayer.Features.Playlists.PlaylistDetailPage"
+             x:DataType="playlists:PlaylistDetailViewModel"
+             Shell.NavBarIsVisible="False"
+             Shell.TabBarIsVisible="False"
+             BackgroundColor="{StaticResource BgCanvas}">
+
+    <Grid>
+        <Grid RowDefinitions="Auto, Auto, *, Auto"
+              Padding="16,12,16,0">
+
+            <!-- 1. Минималистичная верхняя панель (только круглая кнопка Назад) -->
+            <Grid Grid.Row="0"
+                  Padding="0,0,0,12">
+                <Border Style="{StaticResource PlaylistDetailBackButtonStyle}"
+                        HorizontalOptions="Start"
+                        VerticalOptions="Center">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding GoBackCommand}" />
+                    </Border.GestureRecognizers>
+
+                    <Image Source="nav_arrow_back.png"
+                           WidthRequest="20"
+                           HeightRequest="20"
+                           Aspect="AspectFit"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center"
+                           InputTransparent="True" />
+                </Border>
+            </Grid>
+
+            <!-- 2. Разделительная линия + шапка информации о плейлисте -->
+            <VerticalStackLayout Grid.Row="1"
+                                 Spacing="16">
+                <BoxView HeightRequest="1"
+                         Color="{StaticResource BorderSubtle}" />
+
+                <Grid ColumnDefinitions="116, *"
+                      ColumnSpacing="16"
+                      VerticalOptions="Center">
+
+                    <!-- Обложка плейлиста слева -->
+                    <Border Grid.Column="0"
+                            Style="{StaticResource PlaylistDetailCoverBorderStyle}">
+                        <Image Source="{Binding CoverSource}"
+                               Aspect="AspectFill"
+                               HorizontalOptions="Fill"
+                               VerticalOptions="Fill" />
+                    </Border>
+
+                    <!-- Название, счётчик и 2 кнопки-капсулы справа -->
+                    <VerticalStackLayout Grid.Column="1"
+                                         Spacing="10"
+                                         VerticalOptions="Center">
+
+                        <VerticalStackLayout Spacing="2">
+                            <Label Text="{Binding Title}"
+                                   Style="{StaticResource PlaylistDetailTitleStyle}" />
+
+                            <Label Text="{Binding TrackCountText}"
+                                   Style="{StaticResource TrackItemSubtitleLabelStyle}" />
+                        </VerticalStackLayout>
+
+                        <HorizontalStackLayout Spacing="8">
+                            <Button Text="Слушать"
+                                    Command="{Binding PlayAllCommand}"
+                                    IsEnabled="{Binding HasTracks}"
+                                    Style="{StaticResource PlaylistDetailPlayButtonStyle}" />
+
+                            <Button Text="Добавить треки"
+                                    Command="{Binding OpenAddTracksPickerCommand}"
+                                    Style="{StaticResource PlaylistDetailAddButtonStyle}" />
+                        </HorizontalStackLayout>
+                    </VerticalStackLayout>
+                </Grid>
+            </VerticalStackLayout>
+
+            <!-- 3. Вертикальный список треков плейлиста -->
+            <CollectionView Grid.Row="2"
+                            ItemsSource="{Binding Tracks}"
+                            SelectionMode="None"
+                            Margin="0,16,0,0">
+                <CollectionView.ItemsLayout>
+                    <LinearItemsLayout Orientation="Vertical"
+                                       ItemSpacing="10" />
+                </CollectionView.ItemsLayout>
+
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="tracks:TrackItemViewModel">
+                        <Border Style="{StaticResource TrackCardBorderStyle}">
+                            <Grid ColumnDefinitions="52, *, 40"
+                                  ColumnSpacing="14"
+                                  VerticalOptions="Center">
+
+                                <!-- Нажатие на трек запускает воспроизведение плейлиста с этого трека -->
+                                <Grid Grid.Column="0"
+                                      Grid.ColumnSpan="2"
+                                      ColumnDefinitions="52, *"
+                                      ColumnSpacing="14"
+                                      BackgroundColor="Transparent"
+                                      VerticalOptions="Center">
+                                    <Grid.GestureRecognizers>
+                                        <TapGestureRecognizer
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type playlists:PlaylistDetailViewModel}}, Path=PlayFromTrackCommand, x:DataType=playlists:PlaylistDetailViewModel}"
+                                            CommandParameter="{Binding .}" />
+                                    </Grid.GestureRecognizers>
+
+                                    <Border Grid.Column="0"
+                                            Style="{StaticResource TrackItemCoverBorderStyle}"
+                                            InputTransparent="True">
+                                        <Image Source="{Binding Cover}"
+                                               Aspect="AspectFill"
+                                               HorizontalOptions="Fill"
+                                               VerticalOptions="Fill" />
+                                    </Border>
+
+                                    <Grid Grid.Column="1"
+                                          RowDefinitions="Auto, Auto"
+                                          RowSpacing="2"
+                                          VerticalOptions="Center"
+                                          InputTransparent="True">
+                                        <Label Grid.Row="0"
+                                               Text="{Binding Track.Title}"
+                                               Style="{StaticResource TrackItemTitleLabelStyle}" />
+
+                                        <Label Grid.Row="1"
+                                               Text="{Binding Subtitle}"
+                                               Style="{StaticResource TrackItemSubtitleLabelStyle}" />
+                                    </Grid>
+                                </Grid>
+
+                                <!-- Кнопка «Три точки» (track_more_vert) -->
+                                <Border Grid.Column="2"
+                                        Style="{StaticResource PlayerIconButtonStyle}"
+                                        HorizontalOptions="End"
+                                        VerticalOptions="Center">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type playlists:PlaylistDetailViewModel}}, Path=OpenTrackOptionsCommand, x:DataType=playlists:PlaylistDetailViewModel}"
+                                            CommandParameter="{Binding .}" />
+                                    </Border.GestureRecognizers>
+
+                                    <Image Source="track_more_vert.png"
+                                           Style="{StaticResource PlayerStaticIconImageStyle}"
+                                           InputTransparent="True" />
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <!-- 4. Нижний мини-плеер -->
+            <components:MiniPlayerView x:Name="MiniPlayer"
+                                       Grid.Row="3"
+                                       BindingContext="{Binding Player}"
+                                       Margin="0,0,0,12"
+                                       VerticalOptions="End" />
+        </Grid>
+
+        <!-- 5. Нижнее меню действий трека -->
+        <playlistComponents:PlaylistTrackOptionsBottomSheet IsOpen="{Binding IsTrackOptionsPopupVisible}" />
+
+        <!-- 6. Окно выбора треков из библиотеки -->
+        <playlistComponents:AddTracksToPlaylistSheet IsOpen="{Binding IsAddTracksSheetVisible}" />
+    </Grid>
+</ContentPage>
