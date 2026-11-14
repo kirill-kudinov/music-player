@@ -28,6 +28,7 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
 
     private readonly List<TrackItemViewModel> _allTracks = [];
     private readonly HashSet<string> _loadedPaths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly SemaphoreSlim _loadGate = new(1, 1);
     private bool _isDisposed;
 
     [ObservableProperty]
@@ -69,30 +70,69 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
 
     public void LoadTracks()
     {
+        _ = LoadTracksAsync();
+    }
+
+    public async Task LoadTracksAsync()
+    {
         Player.Tick();
 
         if (!Directory.Exists(_storageSettings.BaseDirectory))
             return;
 
-        bool hasChanges = false;
+        if (!await _loadGate.WaitAsync(0))
+            return;
 
-        foreach (string rawFilePath in Directory.EnumerateFiles(_storageSettings.BaseDirectory))
+        try
         {
-            string filePath = Path.GetFullPath(rawFilePath);
-
-            if (_trackStorage.IsExcluded(filePath) || !_loadedPaths.Add(filePath))
-                continue;
-
-            if (TryCreateTrackItem(filePath, out var trackItem))
+            List<TrackItemViewModel> newlyLoaded = await Task.Run(() =>
             {
-                _allTracks.Add(trackItem);
-                hasChanges = true;
+                List<TrackItemViewModel> items = [];
+
+                foreach (string rawFilePath in Directory.EnumerateFiles(_storageSettings.BaseDirectory))
+                {
+                    string filePath = Path.GetFullPath(rawFilePath);
+                    if (_trackStorage.IsExcluded(filePath))
+                        continue;
+
+                    lock (_loadedPaths)
+                    {
+                        if (_loadedPaths.Contains(filePath))
+                            continue;
+                    }
+
+                    if (TryCreateTrackItem(filePath, out var trackItem))
+                    {
+                        items.Add(trackItem);
+                    }
+                }
+
+                return items;
+            });
+
+            if (newlyLoaded.Count > 0 || (FilteredTracks.Count == 0 && _allTracks.Count > 0))
+            {
+                RunOnMainThread(() =>
+                {
+                    foreach (var item in newlyLoaded)
+                    {
+                        string path = Path.GetFullPath(item.Track.ContentUri.LocalPath);
+                        lock (_loadedPaths)
+                        {
+                            if (!_loadedPaths.Add(path))
+                                continue;
+                        }
+
+                        _allTracks.Add(item);
+                    }
+
+                    ApplyFilter(SearchQuery);
+                });
             }
         }
-
-        if (hasChanges || (FilteredTracks.Count == 0 && _allTracks.Count > 0))
+        finally
         {
-            RunOnMainThread(() => ApplyFilter(SearchQuery));
+            _loadGate.Release();
         }
     }
 
@@ -124,7 +164,7 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
         _playbackQueue.Enqueue(target.Track);
         Player.SyncQueueState();
 
-        await ShowToastSafeAsync($"«{target.Track.Title}» добавлен в очередь");
+        await ShowToastSafeAsync($"Трек «{target.Track.Title}» добавлен в очередь");
     }
 
     [RelayCommand]
@@ -142,13 +182,9 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
             Player.SyncFavoriteState();
         }
 
-        await ShowToastSafeAsync($"«{target.Track.Title}» добавлен в плейлист");
+        await ShowToastSafeAsync($"Трек «{target.Track.Title}» добавлен в избранное");
     }
 
-    /// <summary>
-    /// Мгновенно удаляет трек из списка UI, очереди воспроизведения и библиотеки плеера,
-    /// не затрагивая исходный файл на физическом устройстве.
-    /// </summary>
     [RelayCommand]
     private async Task DeleteTrackFromPlayerAsync()
     {
@@ -164,7 +200,7 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
         Player.HandleTrackRemoved(target.Track);
         _trackStorage.RemoveTrackFromPlayer(target.Track.ContentUri);
 
-        await ShowToastSafeAsync($"«{target.Track.Title}» удалён из плеера");
+        await ShowToastSafeAsync($"Трек «{target.Track.Title}» удалён");
     }
 
     [RelayCommand]
@@ -177,23 +213,31 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
 
         var queueTracks = _allTracks.Select(x => x.Track).ToList();
         _playbackQueue.SetTracks(queueTracks, item.Track);
+
         _audioPlayer.Play(item.Track.ContentUri);
         Player.NotifyTrackStarted();
 
         await Player.ExpandCommand.ExecuteAsync(null);
     }
 
-    private void OnStorageTrackAdded(object? sender, string rawFilePath)
+    private async void OnStorageTrackAdded(object? sender, string rawFilePath)
     {
         string filePath = Path.GetFullPath(rawFilePath);
-        if (!TryCreateTrackItem(filePath, out var newItem))
+
+        TrackItemViewModel? newItem = await Task.Run(() =>
+            TryCreateTrackItem(filePath, out var item) ? item : null);
+
+        if (newItem is null)
             return;
 
         RunOnMainThread(() =>
         {
             RemoveTrackItemFromCollections(newItem.Track.ContentUri);
+            lock (_loadedPaths)
+            {
+                _loadedPaths.Add(filePath);
+            }
 
-            _loadedPaths.Add(filePath);
             _allTracks.Add(newItem);
 
             if (MatchesFilter(newItem, SearchQuery))
@@ -211,7 +255,10 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
 
     private void RemoveTrackByPath(string normalizedFilePath)
     {
-        _loadedPaths.Remove(normalizedFilePath);
+        lock (_loadedPaths)
+        {
+            _loadedPaths.Remove(normalizedFilePath);
+        }
 
         var matching = _allTracks.FirstOrDefault(x =>
             x.Track.ContentUri.IsFile &&
@@ -227,7 +274,10 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
     {
         if (contentUri.IsFile)
         {
-            _loadedPaths.Remove(Path.GetFullPath(contentUri.LocalPath));
+            lock (_loadedPaths)
+            {
+                _loadedPaths.Remove(Path.GetFullPath(contentUri.LocalPath));
+            }
         }
 
         for (int i = _allTracks.Count - 1; i >= 0; i--)
@@ -270,7 +320,6 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
     private void ApplyFilter(string? query)
     {
         FilteredTracks.Clear();
-
         foreach (var item in _allTracks)
         {
             if (MatchesFilter(item, query))
@@ -339,5 +388,6 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
         _isDisposed = true;
         _trackStorage.TrackAdded -= OnStorageTrackAdded;
         _trackStorage.TrackRemoved -= OnStorageTrackRemoved;
+        _loadGate.Dispose();
     }
 }

@@ -10,7 +10,7 @@
     <Grid RowDefinitions="Auto, Auto, Auto"
           ColumnDefinitions="44, *, 68, *, 44">
 
-        <!-- СТРОКА 0: Слайдер прогресса -->
+        <!-- Ряд 0: Слайдер прогресса трека -->
         <Slider x:Name="TrackSlider"
                 Grid.Row="0"
                 Grid.Column="0"
@@ -22,11 +22,11 @@
                 DragStartedCommand="{Binding SeekStartedCommand}"
                 DragCompletedCommand="{Binding SeekCompletedCommand}" />
 
-        <!-- СТРОКА 1: Тайминги трека -->
+        <!-- Ряд 1: Таймкоды (обновляются только при смене целой секунды, не нагружая UI-поток) -->
         <Label Grid.Row="1"
                Grid.Column="0"
                Grid.ColumnSpan="2"
-               Text="{Binding Position, StringFormat='{0:m\\:ss}', FallbackValue='0:00'}"
+               Text="{Binding FormattedPosition, FallbackValue='0:00'}"
                Style="{StaticResource TrackTimeLabelStyle}"
                HorizontalOptions="Start"
                Margin="0,14,0,0" />
@@ -34,14 +34,13 @@
         <Label Grid.Row="1"
                Grid.Column="3"
                Grid.ColumnSpan="2"
-               Text="{Binding Duration, StringFormat='{0:m\\:ss}', FallbackValue='0:00'}"
+               Text="{Binding FormattedDuration, FallbackValue='0:00'}"
                Style="{StaticResource TrackTimeLabelStyle}"
                HorizontalOptions="End"
                Margin="0,14,0,0" />
 
-        <!-- СТРОКА 2: 5 кнопок управления воспроизведением -->
-
-        <!-- 1. Shuffle: смена между player_shuffle.svg и player_shuffle_inactive.svg -->
+        <!-- Ряд 2: 5 кнопок управления -->
+        <!-- 1. Shuffle -->
         <Border Grid.Row="2"
                 Grid.Column="0"
                 Style="{StaticResource TransportSideButtonStyle}"
@@ -59,7 +58,8 @@
                                        PressedOpacity="0.75"
                                        ShouldMakeChildrenInputTransparent="True" />
             </Border.Behaviors>
-            <Image Style="{StaticResource ShuffleIconImageStyle}">
+            <Image Style="{StaticResource ShuffleIconImageStyle}"
+                   InputTransparent="True">
                 <Image.Triggers>
                     <DataTrigger TargetType="Image"
                                  Binding="{Binding IsShuffleEnabled}"
@@ -75,7 +75,7 @@
             </Image>
         </Border>
 
-        <!-- 2. Previous Track (player_prev.svg) -->
+        <!-- 2. Previous Track (правило 4 секунд: > 4с в начало трека, <= 4с предыдущий трек) -->
         <Border Grid.Row="2"
                 Grid.Column="1"
                 Style="{StaticResource TransportStepButtonStyle}"
@@ -93,10 +93,11 @@
                                        ShouldMakeChildrenInputTransparent="True" />
             </Border.Behaviors>
             <Image Source="player_prev.png"
-                   Style="{StaticResource PlayerStaticIconImageStyle}" />
+                   Style="{StaticResource PlayerStaticIconImageStyle}"
+                   InputTransparent="True" />
         </Border>
 
-        <!-- 3. Play / Pause: смена между player_play.svg и player_pause.svg -->
+        <!-- 3. Play / Pause -->
         <Border Grid.Row="2"
                 Grid.Column="2"
                 Style="{StaticResource PlayerMainPlayButtonStyle}"
@@ -122,8 +123,8 @@
                                        PressedOpacity="0.90"
                                        ShouldMakeChildrenInputTransparent="True" />
             </Border.Behaviors>
-
-            <Image Style="{StaticResource PlayPauseIconImageStyle}">
+            <Image Style="{StaticResource PlayPauseIconImageStyle}"
+                   InputTransparent="True">
                 <Image.Triggers>
                     <DataTrigger TargetType="Image"
                                  Binding="{Binding IsPlaying}"
@@ -139,7 +140,7 @@
             </Image>
         </Border>
 
-        <!-- 4. Next Track (player_next.svg) -->
+        <!-- 4. Next Track -->
         <Border Grid.Row="2"
                 Grid.Column="3"
                 Style="{StaticResource TransportStepButtonStyle}"
@@ -157,10 +158,11 @@
                                        ShouldMakeChildrenInputTransparent="True" />
             </Border.Behaviors>
             <Image Source="player_next.png"
-                   Style="{StaticResource PlayerStaticIconImageStyle}" />
+                   Style="{StaticResource PlayerStaticIconImageStyle}"
+                   InputTransparent="True" />
         </Border>
 
-        <!-- 5. Repeat Mode: смена между player_repeat_inactive.svg, player_repeat_active.svg и player_repeat_one.svg -->
+        <!-- 5. Repeat Mode -->
         <Border Grid.Row="2"
                 Grid.Column="4"
                 Style="{StaticResource TransportSideButtonStyle}"
@@ -178,8 +180,8 @@
                                        PressedOpacity="0.75"
                                        ShouldMakeChildrenInputTransparent="True" />
             </Border.Behaviors>
-
-            <Image Style="{StaticResource RepeatIconImageStyle}">
+            <Image Style="{StaticResource RepeatIconImageStyle}"
+                   InputTransparent="True">
                 <Image.Triggers>
                     <DataTrigger TargetType="Image"
                                  Binding="{Binding RepeatMode}"
