@@ -44,9 +44,23 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _isTrackOptionsPopupVisible;
 
+    [ObservableProperty]
+    private TrackItemViewModel? _selectedTrackForPlaylist;
+
+    [ObservableProperty]
+    private bool _isSelectPlaylistSheetVisible;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasNoAvailablePlaylistsForTrack))]
+    private bool _hasAvailablePlaylistsForTrack;
+
+    public bool HasNoAvailablePlaylistsForTrack => !HasAvailablePlaylistsForTrack;
+
     public PlayerViewModel Player { get; }
 
     public ObservableCollection<TrackItemViewModel> FilteredTracks { get; } = [];
+
+    public ObservableCollection<SelectablePlaylistItemViewModel> AvailablePlaylistsForTrack { get; } = [];
 
     public TracksViewModel(
         TrackStorageSettings storageSettings,
@@ -67,6 +81,7 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
 
         _trackStorage.TrackAdded += OnStorageTrackAdded;
         _trackStorage.TrackRemoved += OnStorageTrackRemoved;
+        _playlistRepository.TrackFavoriteChanged += OnRepositoryTrackFavoriteChanged;
     }
 
     partial void OnSearchQueryChanged(string value)
@@ -180,7 +195,6 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
 
         await ShowToastSafeAsync($"Трек «{target.Track.Title}» добавлен в очередь");
     }
-    
 
     [RelayCommand]
     private async Task DeleteTrackFromPlayerAsync()
@@ -196,7 +210,7 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
         RunOnMainThread(() => RemoveTrackItemFromCollections(target.Track.ContentUri));
         Player.HandleTrackRemoved(target.Track);
         _trackStorage.RemoveTrackFromPlayer(target.Track.ContentUri);
-        _ = _playlistRepository.RemoveTrackFromEverywhereAsync(target.Track.ContentUri);
+        await _playlistRepository.RemoveTrackFromEverywhereAsync(target.Track.ContentUri);
 
         await ShowToastSafeAsync($"Трек «{target.Track.Title}» удалён");
     }
@@ -218,31 +232,157 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
         await Player.ExpandCommand.ExecuteAsync(null);
     }
 
-    private async void OnStorageTrackAdded(object? sender, string rawFilePath)
+    [RelayCommand]
+    private async Task AddTrackToPlaylistAsync()
     {
-        string filePath = Path.GetFullPath(rawFilePath);
+        var target = SelectedTrackForOptions;
+        IsTrackOptionsPopupVisible = false;
 
-        TrackItemViewModel? newItem = await Task.Run(() =>
-            TryCreateTrackItem(filePath, out var item) ? item : null);
-
-        if (newItem is null)
+        if (target is null)
             return;
+
+        Task<Result<IReadOnlyList<Playlist>>> playlistsTask = _playlistRepository.GetAllPlaylistsAsync();
+        // Даём нижней шторке опций время плавно уехать, чтобы не накладывать две анимации.
+        await Task.WhenAll(playlistsTask, Task.Delay(120));
+
+        Result<IReadOnlyList<Playlist>> result = await playlistsTask;
+        if (!result.TryGetOk(out IReadOnlyList<Playlist>? playlists))
+        {
+            await ShowToastSafeAsync(result.Error.Message);
+            return;
+        }
+
+        List<SelectablePlaylistItemViewModel> items = await Task.Run(() =>
+            playlists.Select(p => new SelectablePlaylistItemViewModel(p, p.ContainsTrack(target.Track.ContentUri))).ToList());
 
         RunOnMainThread(() =>
         {
-            RemoveTrackItemFromCollections(newItem.Track.ContentUri);
-            lock (_loadedPaths)
+            AvailablePlaylistsForTrack.Clear();
+            foreach (SelectablePlaylistItemViewModel item in items)
             {
-                _loadedPaths.Add(filePath);
+                AvailablePlaylistsForTrack.Add(item);
             }
 
-            _allTracks.Add(newItem);
+            HasAvailablePlaylistsForTrack = AvailablePlaylistsForTrack.Count > 0;
+            SelectedTrackForPlaylist = target;
+            IsSelectPlaylistSheetVisible = true;
+        });
+    }
 
-            if (MatchesFilter(newItem, SearchQuery))
+    [RelayCommand]
+    private void TogglePlaylistSelection(SelectablePlaylistItemViewModel? item)
+    {
+        if (item is null)
+            return;
+
+        item.IsSelected = !item.IsSelected;
+    }
+
+    [RelayCommand]
+    private void CloseSelectPlaylistSheet()
+    {
+        IsSelectPlaylistSheetVisible = false;
+        SelectedTrackForPlaylist = null;
+    }
+
+    [RelayCommand]
+    private async Task ConfirmAddToPlaylistsAsync()
+    {
+        TrackItemViewModel? target = SelectedTrackForPlaylist;
+        List<SelectablePlaylistItemViewModel> items = [.. AvailablePlaylistsForTrack];
+
+        IsSelectPlaylistSheetVisible = false;
+        SelectedTrackForPlaylist = null;
+
+        if (target is null)
+            return;
+
+        List<Guid> playlistIdsToAdd = [];
+        List<Guid> playlistIdsToRemove = [];
+
+        foreach (SelectablePlaylistItemViewModel item in items)
+        {
+            if (item.IsSelected == item.InitiallyContainsTrack)
+                continue;
+
+            if (item.IsSelected)
             {
-                FilteredTracks.Add(newItem);
+                playlistIdsToAdd.Add(item.Id);
+            }
+            else
+            {
+                playlistIdsToRemove.Add(item.Id);
+            }
+        }
+
+        if (playlistIdsToAdd.Count == 0 && playlistIdsToRemove.Count == 0)
+            return;
+
+        Result<int> updateResult = await _playlistRepository.UpdateTrackPlaylistsAsync(
+            target.Track,
+            playlistIdsToAdd,
+            playlistIdsToRemove);
+
+        if (!updateResult.TryGetOk(out int changedCount))
+        {
+            await ShowToastSafeAsync(updateResult.Error.Message);
+            return;
+        }
+
+        if (changedCount > 0)
+        {
+            await ShowToastSafeAsync("Плейлисты обновлены");
+        }
+    }
+
+    private void OnRepositoryTrackFavoriteChanged(object? sender, TrackFavoriteChangedEventArgs e)
+    {
+        RunOnMainThread(() =>
+        {
+            foreach (TrackItemViewModel item in _allTracks)
+            {
+                if (AreSameTrackUri(item.Track.ContentUri, e.ContentUri))
+                {
+                    item.Track.SetFavorite(e.IsFavorite);
+                }
             }
         });
+    }
+
+    private async void OnStorageTrackAdded(object? sender, string rawFilePath)
+    {
+        try
+        {
+            string filePath = Path.GetFullPath(rawFilePath);
+
+            TrackItemViewModel? newItem = await Task.Run(() =>
+                TryCreateTrackItem(filePath, out var item) ? item : null);
+
+            if (newItem is null)
+                return;
+
+            await _playlistRepository.SyncFavoritesWithTracksAsync([newItem.Track]);
+
+            RunOnMainThread(() =>
+            {
+                RemoveTrackItemFromCollections(newItem.Track.ContentUri);
+                lock (_loadedPaths)
+                {
+                    _loadedPaths.Add(filePath);
+                }
+
+                _allTracks.Add(newItem);
+
+                if (MatchesFilter(newItem, SearchQuery))
+                {
+                    FilteredTracks.Add(newItem);
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[TracksViewModel] OnStorageTrackAdded failed: {ex.Message}");
+        }
     }
 
     private void OnStorageTrackRemoved(object? sender, string rawFilePath)
@@ -259,7 +399,7 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
         }
 
         var matching = _allTracks.FirstOrDefault(x =>
-            x.Track.ContentUri.IsFile &&
+            x.Track.ContentUri.IsAbsoluteUri && x.Track.ContentUri.IsFile &&
             string.Equals(Path.GetFullPath(x.Track.ContentUri.LocalPath), normalizedFilePath, StringComparison.OrdinalIgnoreCase));
 
         if (matching is not null)
@@ -270,7 +410,7 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
 
     private void RemoveTrackItemFromCollections(Uri contentUri)
     {
-        if (contentUri.IsFile)
+        if (contentUri.IsAbsoluteUri && contentUri.IsFile)
         {
             lock (_loadedPaths)
             {
@@ -342,7 +482,7 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
         if (left == right)
             return true;
 
-        if (left.IsFile && right.IsFile)
+        if (left.IsAbsoluteUri && left.IsFile && right.IsAbsoluteUri && right.IsFile)
         {
             return string.Equals(
                 Path.GetFullPath(left.LocalPath),
@@ -377,110 +517,7 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
             Debug.WriteLine($"[TracksViewModel] Toast notification skipped: {ex.Message}");
         }
     }
-    
-    [ObservableProperty]
-    private TrackItemViewModel? _selectedTrackForPlaylist;
 
-    [ObservableProperty]
-    private bool _isSelectPlaylistSheetVisible;
-
-    public ObservableCollection<SelectablePlaylistItemViewModel> AvailablePlaylistsForTrack { get; } = [];
-
-    
-    [RelayCommand]
-    private async Task AddTrackToPlaylistAsync()
-    {
-        var target = SelectedTrackForOptions;
-        IsTrackOptionsPopupVisible = false;
-
-        if (target is null)
-            return;
-
-        Result<IReadOnlyList<Playlist>> result = await _playlistRepository.GetAllPlaylistsAsync();
-        if (!result.TryGetOk(out IReadOnlyList<Playlist>? playlists))
-        {
-            await ShowToastSafeAsync(result.Error.Message);
-            return;
-        }
-
-        RunOnMainThread(() =>
-        {
-            AvailablePlaylistsForTrack.Clear();
-            foreach (Playlist playlist in playlists)
-            {
-                bool contains = playlist.ContainsTrack(target.Track.ContentUri);
-                AvailablePlaylistsForTrack.Add(new SelectablePlaylistItemViewModel(playlist, contains));
-            }
-
-            SelectedTrackForPlaylist = target;
-            IsSelectPlaylistSheetVisible = true;
-        });
-    }
-
-    [RelayCommand]
-    private void TogglePlaylistSelection(SelectablePlaylistItemViewModel? item)
-    {
-        if (item is null)
-            return;
-
-        item.IsSelected = !item.IsSelected;
-    }
-
-    [RelayCommand]
-    private void CloseSelectPlaylistSheet()
-    {
-        IsSelectPlaylistSheetVisible = false;
-        SelectedTrackForPlaylist = null;
-    }
-
-    [RelayCommand]
-    private async Task ConfirmAddToPlaylistsAsync()
-    {
-        TrackItemViewModel? target = SelectedTrackForPlaylist;
-        List<SelectablePlaylistItemViewModel> items = [.. AvailablePlaylistsForTrack];
-
-        IsSelectPlaylistSheetVisible = false;
-        SelectedTrackForPlaylist = null;
-
-        if (target is null)
-            return;
-
-        bool anyChanged = false;
-
-        foreach (SelectablePlaylistItemViewModel item in items)
-        {
-            if (item.IsSelected == item.InitiallyContainsTrack)
-                continue;
-
-            Result<Unit> opResult = item.IsSelected
-                ? await _playlistRepository.AddTrackToPlaylistAsync(item.Id, target.Track)
-                : await _playlistRepository.RemoveTrackFromPlaylistAsync(item.Id, target.Track.ContentUri);
-
-            if (opResult.IsError)
-            {
-                await ShowToastSafeAsync(opResult.Error.Message);
-                continue;
-            }
-
-            anyChanged = true;
-
-            if (item.IsSystem)
-            {
-                if (target.Track.IsFavorite != item.IsSelected)
-                {
-                    target.Track.ToggleFavorite();
-                }
-
-                Player.SyncFavoriteState();
-            }
-        }
-
-        if (anyChanged)
-        {
-            await ShowToastSafeAsync("Плейлисты обновлены");
-        }
-    }
-    
     public void Dispose()
     {
         if (_isDisposed)
@@ -489,6 +526,7 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
         _isDisposed = true;
         _trackStorage.TrackAdded -= OnStorageTrackAdded;
         _trackStorage.TrackRemoved -= OnStorageTrackRemoved;
+        _playlistRepository.TrackFavoriteChanged -= OnRepositoryTrackFavoriteChanged;
         _loadGate.Dispose();
     }
 }

@@ -1,14 +1,18 @@
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
+using MusicPlayer.Features.Player.Animations;
 
 namespace MusicPlayer.Features.Tracks.Components;
 
 public partial class SelectPlaylistForTrackSheet : ContentView
 {
     private const string ModalAnimationName = "SelectPlaylistForTrackSheetTransition";
-    private const uint FrameRateHz = 16;
-    private const uint OpenDurationMs = 200;
-    private const uint CloseDurationMs = 150;
+    private const uint FrameRateMs = 8;
+    private const uint OpenDurationMs = 220;
+    private const uint CloseDurationMs = 160;
+    private const double HiddenTranslationY = 28.0;
+
+    private int _animationGeneration;
 
     public static readonly BindableProperty IsOpenProperty = BindableProperty.Create(
         nameof(IsOpen),
@@ -38,30 +42,47 @@ public partial class SelectPlaylistForTrackSheet : ContentView
 
     private void AnimateModalState(bool isOpen)
     {
+        int generation = ++_animationGeneration;
         this.AbortAnimation(ModalAnimationName);
 
         if (isOpen)
         {
+            BackdropScrim.Opacity = 0.0;
+            ModalCard.Opacity = 0.0;
+            ModalCard.TranslationY = HiddenTranslationY;
+
             IsVisible = true;
             InputTransparent = false;
 
-            BackdropScrim.Opacity = 0.0;
-            ModalCard.Opacity = 0.0;
-            ModalCard.Scale = 0.95;
-
-            var openAnimation = new Animation
+            // Откладываем старт анимации на один цикл рендеринга, чтобы Measure/Arrange
+            // CollectionView и карточки завершились до первого кадра анимации.
+            Dispatcher.Dispatch(() =>
             {
-                { 0.0, 1.0, new Animation(v => BackdropScrim.Opacity = v, 0.0, 1.0, Easing.CubicOut) },
-                { 0.0, 1.0, new Animation(v => ModalCard.Opacity = v, 0.0, 1.0, Easing.CubicOut) },
-                { 0.0, 1.0, new Animation(v => ModalCard.Scale = v, 0.95, 1.0, Easing.CubicOut) }
-            };
+                if (!IsOpen || generation != _animationGeneration)
+                    return;
 
-            openAnimation.Commit(
-                owner: this,
-                name: ModalAnimationName,
-                rate: FrameRateHz,
-                length: OpenDurationMs,
-                easing: Easing.Linear);
+                AndroidRenderLayerHelper.SetHardwareLayer(ModalCard, true);
+                AndroidRenderLayerHelper.SetHardwareLayer(BackdropScrim, true);
+
+                var openAnimation = new Animation
+                {
+                    { 0.0, 1.0, new Animation(v => BackdropScrim.Opacity = v, 0.0, 1.0, Easing.CubicOut) },
+                    { 0.0, 0.85, new Animation(v => ModalCard.Opacity = v, 0.0, 1.0, Easing.CubicOut) },
+                    { 0.0, 1.0, new Animation(v => ModalCard.TranslationY = v, HiddenTranslationY, 0.0, Easing.CubicOut) }
+                };
+
+                openAnimation.Commit(
+                    owner: this,
+                    name: ModalAnimationName,
+                    rate: FrameRateMs,
+                    length: OpenDurationMs,
+                    easing: Easing.Linear,
+                    finished: (_, _) =>
+                    {
+                        AndroidRenderLayerHelper.SetHardwareLayer(ModalCard, false);
+                        AndroidRenderLayerHelper.SetHardwareLayer(BackdropScrim, false);
+                    });
+            });
         }
         else
         {
@@ -69,24 +90,30 @@ public partial class SelectPlaylistForTrackSheet : ContentView
 
             double startScrimOpacity = BackdropScrim.Opacity;
             double startCardOpacity = ModalCard.Opacity;
-            double startCardScale = ModalCard.Scale;
+            double startTranslationY = ModalCard.TranslationY;
+
+            AndroidRenderLayerHelper.SetHardwareLayer(ModalCard, true);
+            AndroidRenderLayerHelper.SetHardwareLayer(BackdropScrim, true);
 
             var closeAnimation = new Animation
             {
                 { 0.0, 1.0, new Animation(v => BackdropScrim.Opacity = v, startScrimOpacity, 0.0, Easing.CubicIn) },
                 { 0.0, 1.0, new Animation(v => ModalCard.Opacity = v, startCardOpacity, 0.0, Easing.CubicIn) },
-                { 0.0, 1.0, new Animation(v => ModalCard.Scale = v, startCardScale, 0.95, Easing.CubicIn) }
+                { 0.0, 1.0, new Animation(v => ModalCard.TranslationY = v, startTranslationY, HiddenTranslationY, Easing.CubicIn) }
             };
 
             closeAnimation.Commit(
                 owner: this,
                 name: ModalAnimationName,
-                rate: FrameRateHz,
+                rate: FrameRateMs,
                 length: CloseDurationMs,
                 easing: Easing.Linear,
                 finished: (_, _) =>
                 {
-                    if (!IsOpen)
+                    AndroidRenderLayerHelper.SetHardwareLayer(ModalCard, false);
+                    AndroidRenderLayerHelper.SetHardwareLayer(BackdropScrim, false);
+
+                    if (!IsOpen && generation == _animationGeneration)
                     {
                         IsVisible = false;
                     }

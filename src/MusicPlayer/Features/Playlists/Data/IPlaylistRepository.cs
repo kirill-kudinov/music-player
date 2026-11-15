@@ -8,9 +8,16 @@ using MusicPlayer.Core.Primitives;
 
 namespace MusicPlayer.Features.Playlists.Data;
 
+public sealed class TrackFavoriteChangedEventArgs(Uri contentUri, bool isFavorite) : EventArgs
+{
+    public Uri ContentUri { get; } = contentUri;
+    public bool IsFavorite { get; } = isFavorite;
+}
+
 public interface IPlaylistRepository
 {
     event EventHandler? PlaylistsChanged;
+    event EventHandler<TrackFavoriteChangedEventArgs>? TrackFavoriteChanged;
 
     Task<Result<IReadOnlyList<Playlist>>> GetAllPlaylistsAsync(
         CancellationToken cancellationToken = default);
@@ -51,6 +58,12 @@ public interface IPlaylistRepository
     Task<Result<int>> AddTracksToPlaylistAsync(
         Guid playlistId,
         IReadOnlyList<AudioTrack> tracks,
+        CancellationToken cancellationToken = default);
+
+    Task<Result<int>> UpdateTrackPlaylistsAsync(
+        AudioTrack track,
+        IReadOnlyList<Guid> playlistIdsToAdd,
+        IReadOnlyList<Guid> playlistIdsToRemove,
         CancellationToken cancellationToken = default);
 
     Task<Result<Unit>> RemoveTrackFromPlaylistAsync(

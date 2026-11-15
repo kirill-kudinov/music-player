@@ -3,24 +3,28 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
+using MusicPlayer.Features.Player.Animations;
 
 namespace MusicPlayer.Features.Tracks.Components;
 
 /// <summary>
 /// Нижняя шторка (Bottom Sheet) действий с треком в стиле YouTube Music.
-/// Выдвигается снизу экрана с использованием аппаратно-ускоренных свойств RenderNode (TranslationY, Opacity),
-/// поддерживает интерактивное закрытие свайпом вниз (PanGestureRecognizer) и не блокирует UI-поток.
+/// Выдвигается снизу экрана с использованием аппаратного GPU-слоя Android (LayerType.Hardware)
+/// и аппаратно-ускоренных свойств (TranslationY, Opacity), поддерживает закрытие свайпом вниз.
 /// </summary>
 public partial class TrackOptionsBottomSheet : ContentView
 {
     private const string SheetAnimationName = "TrackOptionsBottomSheetTransition";
     private const string SheetSnapAnimationName = "TrackOptionsBottomSheetSnap";
-    private const uint FrameRateHz = 16;
-    private const uint OpenDurationMs = 240;
-    private const uint CloseDurationMs = 190;
-    private const uint SnapBackDurationMs = 160;
+    private const uint FrameRateMs = 8;
+    private const uint OpenDurationMs = 220;
+    private const uint CloseDurationMs = 170;
+    private const uint SnapBackDurationMs = 150;
     private const double DefaultHiddenOffsetY = 420.0;
     private const double DismissDragThreshold = 90.0;
+
+    private bool _isActionExecuting;
+    private int _animationGeneration;
 
     public static readonly BindableProperty IsOpenProperty = BindableProperty.Create(
         nameof(IsOpen),
@@ -50,31 +54,50 @@ public partial class TrackOptionsBottomSheet : ContentView
 
     private void AnimateSheetState(bool isOpen)
     {
+        int generation = ++_animationGeneration;
         this.AbortAnimation(SheetAnimationName);
         this.AbortAnimation(SheetSnapAnimationName);
+        _isActionExecuting = false;
 
         double hiddenOffsetY = ResolveSheetHeight();
 
         if (isOpen)
         {
-            IsVisible = true;
-            InputTransparent = false;
-
             BackdropScrim.Opacity = 0.0;
             BottomSheetContainer.TranslationY = hiddenOffsetY;
 
-            var openAnimation = new Animation
-            {
-                { 0.0, 1.0, new Animation(v => BackdropScrim.Opacity = v, 0.0, 1.0, Easing.CubicOut) },
-                { 0.0, 1.0, new Animation(v => BottomSheetContainer.TranslationY = v, hiddenOffsetY, 0.0, Easing.CubicOut) }
-            };
+            IsVisible = true;
+            InputTransparent = false;
 
-            openAnimation.Commit(
-                owner: this,
-                name: SheetAnimationName,
-                rate: FrameRateHz,
-                length: OpenDurationMs,
-                easing: Easing.Linear);
+            Dispatcher.Dispatch(() =>
+            {
+                if (!IsOpen || generation != _animationGeneration)
+                    return;
+
+                double startOffsetY = ResolveSheetHeight();
+                BottomSheetContainer.TranslationY = startOffsetY;
+
+                AndroidRenderLayerHelper.SetHardwareLayer(BottomSheetContainer, true);
+                AndroidRenderLayerHelper.SetHardwareLayer(BackdropScrim, true);
+
+                var openAnimation = new Animation
+                {
+                    { 0.0, 1.0, new Animation(v => BackdropScrim.Opacity = v, 0.0, 1.0, Easing.CubicOut) },
+                    { 0.0, 1.0, new Animation(v => BottomSheetContainer.TranslationY = v, startOffsetY, 0.0, Easing.CubicOut) }
+                };
+
+                openAnimation.Commit(
+                    owner: this,
+                    name: SheetAnimationName,
+                    rate: FrameRateMs,
+                    length: OpenDurationMs,
+                    easing: Easing.Linear,
+                    finished: (_, _) =>
+                    {
+                        AndroidRenderLayerHelper.SetHardwareLayer(BottomSheetContainer, false);
+                        AndroidRenderLayerHelper.SetHardwareLayer(BackdropScrim, false);
+                    });
+            });
         }
         else
         {
@@ -82,6 +105,9 @@ public partial class TrackOptionsBottomSheet : ContentView
 
             double startScrimOpacity = BackdropScrim.Opacity;
             double startSheetY = BottomSheetContainer.TranslationY;
+
+            AndroidRenderLayerHelper.SetHardwareLayer(BottomSheetContainer, true);
+            AndroidRenderLayerHelper.SetHardwareLayer(BackdropScrim, true);
 
             var closeAnimation = new Animation
             {
@@ -92,12 +118,15 @@ public partial class TrackOptionsBottomSheet : ContentView
             closeAnimation.Commit(
                 owner: this,
                 name: SheetAnimationName,
-                rate: FrameRateHz,
+                rate: FrameRateMs,
                 length: CloseDurationMs,
                 easing: Easing.Linear,
                 finished: (_, _) =>
                 {
-                    if (!IsOpen)
+                    AndroidRenderLayerHelper.SetHardwareLayer(BottomSheetContainer, false);
+                    AndroidRenderLayerHelper.SetHardwareLayer(BackdropScrim, false);
+
+                    if (!IsOpen && generation == _animationGeneration)
                     {
                         IsVisible = false;
                     }
@@ -117,6 +146,8 @@ public partial class TrackOptionsBottomSheet : ContentView
             case GestureStatus.Started:
                 this.AbortAnimation(SheetAnimationName);
                 this.AbortAnimation(SheetSnapAnimationName);
+                AndroidRenderLayerHelper.SetHardwareLayer(BottomSheetContainer, true);
+                AndroidRenderLayerHelper.SetHardwareLayer(BackdropScrim, true);
                 break;
 
             case GestureStatus.Running:
@@ -147,6 +178,8 @@ public partial class TrackOptionsBottomSheet : ContentView
     private void AnimateSnapBack()
     {
         this.AbortAnimation(SheetSnapAnimationName);
+        AndroidRenderLayerHelper.SetHardwareLayer(BottomSheetContainer, true);
+        AndroidRenderLayerHelper.SetHardwareLayer(BackdropScrim, true);
 
         var snapAnimation = new Animation
         {
@@ -157,15 +190,24 @@ public partial class TrackOptionsBottomSheet : ContentView
         snapAnimation.Commit(
             owner: this,
             name: SheetSnapAnimationName,
-            rate: FrameRateHz,
+            rate: FrameRateMs,
             length: SnapBackDurationMs,
-            easing: Easing.Linear);
+            easing: Easing.Linear,
+            finished: (_, _) =>
+            {
+                AndroidRenderLayerHelper.SetHardwareLayer(BottomSheetContainer, false);
+                AndroidRenderLayerHelper.SetHardwareLayer(BackdropScrim, false);
+            });
     }
 
     private async void OnAddToQueueTapped(object? sender, TappedEventArgs e)
     {
+        if (!IsOpen || _isActionExecuting)
+            return;
+
+        _isActionExecuting = true;
         await PlayRowTapFeedbackAsync(QueueActionRow);
-        if (BindingContext is TracksViewModel vm)
+        if (IsOpen && BindingContext is TracksViewModel vm)
         {
             ExecuteCommandIfPossible(vm.AddTrackToQueueCommand);
         }
@@ -173,8 +215,12 @@ public partial class TrackOptionsBottomSheet : ContentView
 
     private async void OnAddToPlaylistTapped(object? sender, TappedEventArgs e)
     {
+        if (!IsOpen || _isActionExecuting)
+            return;
+
+        _isActionExecuting = true;
         await PlayRowTapFeedbackAsync(PlaylistActionRow);
-        if (BindingContext is TracksViewModel vm)
+        if (IsOpen && BindingContext is TracksViewModel vm)
         {
             ExecuteCommandIfPossible(vm.AddTrackToPlaylistCommand);
         }
@@ -182,8 +228,12 @@ public partial class TrackOptionsBottomSheet : ContentView
 
     private async void OnDeleteTrackTapped(object? sender, TappedEventArgs e)
     {
+        if (!IsOpen || _isActionExecuting)
+            return;
+
+        _isActionExecuting = true;
         await PlayRowTapFeedbackAsync(DeleteActionRow);
-        if (BindingContext is TracksViewModel vm)
+        if (IsOpen && BindingContext is TracksViewModel vm)
         {
             ExecuteCommandIfPossible(vm.DeleteTrackFromPlayerCommand);
         }
@@ -191,8 +241,8 @@ public partial class TrackOptionsBottomSheet : ContentView
 
     private static async Task PlayRowTapFeedbackAsync(VisualElement row)
     {
-        await row.ScaleTo(0.97, 60, Easing.CubicOut);
-        await row.ScaleTo(1.0, 80, Easing.CubicIn);
+        await row.ScaleToAsync(0.97, 50, Easing.CubicOut);
+        await row.ScaleToAsync(1.0, 65, Easing.CubicIn);
     }
 
     private static void ExecuteCommandIfPossible(ICommand? command)

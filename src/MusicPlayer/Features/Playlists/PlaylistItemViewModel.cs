@@ -25,7 +25,7 @@ public sealed partial class PlaylistItemViewModel : ObservableObject
 
     public int TrackCount => Playlist.TrackCount;
 
-    public string TrackCountText => FormatTrackCount(Playlist.TrackCount);
+    public string TrackCountText => PlaylistFormatting.FormatTrackCount(Playlist.TrackCount);
 
     public ImageSource CoverSource => _coverSource;
 
@@ -53,20 +53,5 @@ public sealed partial class PlaylistItemViewModel : ObservableObject
             return ImageSource.FromFile(coverPath);
 
         return PlaceholderCoverImage;
-    }
-
-    private static string FormatTrackCount(int count)
-    {
-        int abs = Math.Abs(count);
-        int mod100 = abs % 100;
-        if (mod100 is >= 11 and <= 19)
-            return $"{count} треков";
-
-        return (abs % 10) switch
-        {
-            1 => $"{count} трек",
-            2 or 3 or 4 => $"{count} трека",
-            _ => $"{count} треков"
-        };
     }
 }

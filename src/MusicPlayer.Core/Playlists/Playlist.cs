@@ -165,15 +165,26 @@ public sealed class Playlist
         }
     }
 
-    private int FindTrackIndex(Uri contentUri)
+    private int FindTrackIndex(Uri? contentUri)
     {
+        if (contentUri is null)
+            return -1;
+
         for (int i = 0; i < _tracks.Count; i++)
         {
-            if (_tracks[i].ContentUri == contentUri)
+            if (AreSameUri(_tracks[i].ContentUri, contentUri))
                 return i;
         }
 
         return -1;
+    }
+
+    private static bool AreSameUri(Uri left, Uri right)
+    {
+        if (ReferenceEquals(left, right) || left == right)
+            return true;
+
+        return string.Equals(left.OriginalString, right.OriginalString, StringComparison.OrdinalIgnoreCase);
     }
 
     private static Result<string> ValidateTitle(string? title)

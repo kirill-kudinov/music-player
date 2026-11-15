@@ -151,7 +151,7 @@ public sealed class AndroidAudioPlayer : IAudioPlayer, IDisposable
 
             try
             {
-                if (source.IsFile && File.Exists(source.LocalPath))
+                if (source.IsAbsoluteUri && source.IsFile && File.Exists(source.LocalPath))
                 {
                     player.SetDataSource(source.LocalPath);
                 }

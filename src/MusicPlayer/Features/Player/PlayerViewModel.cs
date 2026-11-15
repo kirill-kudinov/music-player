@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Threading.Tasks;
+using MusicPlayer.Features.Playlists;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Maui.ApplicationModel;
@@ -31,6 +34,17 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private string _playContextTitle = "Сейчас играет";
+
+    [ObservableProperty]
+    private bool _isQueueOpen;
+
+    [ObservableProperty]
+    private string _queueTrackCountText = "0 треков";
+
+    [ObservableProperty]
+    private string _queueTotalDurationText = "0:00";
+
+    public ObservableCollection<QueueTrackItemViewModel> QueueTracks { get; } = [];
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsCurrentTrackFavorite))]
@@ -118,6 +132,7 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
         _playlistRepository = playlistRepository;
 
         _player.PlaybackCompleted += OnPlaybackCompleted;
+        _playlistRepository.TrackFavoriteChanged += OnRepositoryTrackFavoriteChanged;
         SyncState();
     }
 
@@ -265,7 +280,123 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
     private Task ExpandAsync() => _transitionService.ExpandAsync();
 
     [RelayCommand]
-    private static Task OpenQueueAsync() => Task.CompletedTask;
+    private void DismissMiniPlayer()
+    {
+        _isUserSeeking = false;
+        _player.Stop();
+        _queue.Clear();
+        CurrentTrack = null;
+        IsPlaying = false;
+        SetEnginePosition(TimeSpan.Zero);
+        Duration = TimeSpan.Zero;
+        NotifySkipCommandsCanExecuteChanged();
+        if (IsQueueOpen)
+        {
+            UpdateQueueCurrentMarkers();
+        }
+    }
+
+    [RelayCommand]
+    private void OpenQueue()
+    {
+        RefreshQueueItems();
+        IsQueueOpen = true;
+    }
+
+    [RelayCommand]
+    private void CloseQueue()
+    {
+        IsQueueOpen = false;
+    }
+
+    [RelayCommand]
+    private void PlayQueueItem(QueueTrackItemViewModel? item)
+    {
+        if (item is null)
+            return;
+
+        int index = QueueTracks.IndexOf(item);
+        if (index < 0 || !_queue.JumpTo(index))
+            return;
+
+        _isUserSeeking = false;
+        _lastSeekCommitTimestampMs = Environment.TickCount64;
+        SetEnginePosition(TimeSpan.Zero);
+        _player.Play(item.Track.ContentUri);
+        SyncState();
+        IsPlaying = true;
+        UpdateQueueCurrentMarkers();
+    }
+
+    [RelayCommand]
+    private void RemoveFromQueue(QueueTrackItemViewModel? item)
+    {
+        if (item is null)
+            return;
+
+        HandleTrackRemoved(item.Track);
+        RefreshQueueItems();
+        if (_queue.Tracks.Count == 0)
+        {
+            IsQueueOpen = false;
+        }
+    }
+
+    public void MoveQueueItem(int oldIndex, int newIndex)
+    {
+        if (oldIndex == newIndex ||
+            oldIndex < 0 || oldIndex >= QueueTracks.Count ||
+            newIndex < 0 || newIndex >= QueueTracks.Count)
+        {
+            return;
+        }
+
+        _queue.MoveItem(oldIndex, newIndex);
+        QueueTracks.Move(oldIndex, newIndex);
+        UpdateQueueCurrentMarkers();
+        NotifySkipCommandsCanExecuteChanged();
+    }
+
+    private void RefreshQueueItems()
+    {
+        IReadOnlyList<AudioTrack> tracks = _queue.Tracks;
+        int currentIndex = _queue.CurrentIndex;
+
+        QueueTracks.Clear();
+        TimeSpan totalDuration = TimeSpan.Zero;
+
+        for (int i = 0; i < tracks.Count; i++)
+        {
+            AudioTrack track = tracks[i];
+            totalDuration += track.Duration;
+            ImageSource? cover = _coverExtractor.ExtractCover(track.ContentUri);
+            QueueTracks.Add(new QueueTrackItemViewModel(track, cover, i == currentIndex));
+        }
+
+        QueueTrackCountText = PlaylistFormatting.FormatTrackCount(tracks.Count);
+        QueueTotalDurationText = FormatTotalDuration(totalDuration);
+    }
+
+    private void UpdateQueueCurrentMarkers()
+    {
+        int currentIndex = _queue.CurrentIndex;
+        for (int i = 0; i < QueueTracks.Count; i++)
+        {
+            QueueTracks[i].IsCurrent = i == currentIndex;
+        }
+    }
+
+    private static string FormatTotalDuration(TimeSpan total)
+    {
+        if (total.TotalHours >= 1.0)
+        {
+            int hours = (int)total.TotalHours;
+            return $"{hours}:{total.Minutes:D2}:{total.Seconds:D2}";
+        }
+
+        int totalMinutes = (int)total.TotalMinutes;
+        return $"{totalMinutes}:{total.Seconds:D2}";
+    }
 
     [RelayCommand]
     private void TogglePlayPause()
@@ -357,6 +488,10 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
         _queue.ToggleShuffle();
         IsShuffleEnabled = _queue.IsShuffleEnabled;
         NotifySkipCommandsCanExecuteChanged();
+        if (IsQueueOpen)
+        {
+            RefreshQueueItems();
+        }
     }
 
     [RelayCommand]
@@ -431,6 +566,19 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
         }
     }
 
+    private void OnRepositoryTrackFavoriteChanged(object? sender, TrackFavoriteChangedEventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (CurrentTrack is not null &&
+                string.Equals(CurrentTrack.ContentUri.OriginalString, e.ContentUri.OriginalString, StringComparison.OrdinalIgnoreCase))
+            {
+                CurrentTrack.SetFavorite(e.IsFavorite);
+                SyncFavoriteState();
+            }
+        });
+    }
+
     private void OnPlaybackCompleted(object? sender, EventArgs e)
     {
         MainThread.BeginInvokeOnMainThread(() =>
@@ -485,5 +633,6 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
 
         _isDisposed = true;
         _player.PlaybackCompleted -= OnPlaybackCompleted;
+        _playlistRepository.TrackFavoriteChanged -= OnRepositoryTrackFavoriteChanged;
     }
 }

@@ -6,16 +6,23 @@
              x:Class="MusicPlayer.Features.Player.Components.MiniPlayerView"
              x:DataType="player:PlayerViewModel"
              x:Name="RootView"
+             Padding="0,8,0,4"
              IsVisible="{Binding HasCurrentTrack}">
+    <ContentView.GestureRecognizers>
+        <PanGestureRecognizer PanUpdated="OnMiniPlayerPanUpdated" />
+    </ContentView.GestureRecognizers>
 
     <Border x:Name="MiniPlayerContainer"
             Style="{StaticResource MiniPlayerContainerBorderStyle}">
+        <Border.GestureRecognizers>
+            <PanGestureRecognizer PanUpdated="OnMiniPlayerPanUpdated" />
+        </Border.GestureRecognizers>
 
         <Grid ColumnDefinitions="48, *, 40, 40"
               ColumnSpacing="12"
               VerticalOptions="Center">
 
-            <!-- Интерактивная область развёртки в полноэкранный плеер (тап или свайп вверх) -->
+            <!-- Интерактивная область развёртки в полноэкранный плеер и свайпа вниз/вверх -->
             <Grid Grid.Column="0"
                   Grid.ColumnSpan="2"
                   ColumnDefinitions="48, *"
@@ -24,8 +31,7 @@
                   VerticalOptions="Center">
                 <Grid.GestureRecognizers>
                     <TapGestureRecognizer Command="{Binding ExpandCommand}" />
-                    <SwipeGestureRecognizer Direction="Up"
-                                            Command="{Binding ExpandCommand}" />
+                    <PanGestureRecognizer PanUpdated="OnMiniPlayerPanUpdated" />
                 </Grid.GestureRecognizers>
 
                 <!-- 1. Обложка трека (48x48, скругление 10px, темный фолбэк при отсутствии обложки) -->
@@ -35,7 +41,8 @@
                     <Image Source="{Binding TrackCover}"
                            Aspect="AspectFill"
                            HorizontalOptions="Fill"
-                           VerticalOptions="Fill" />
+                           VerticalOptions="Fill"
+                           InputTransparent="True" />
                 </Border>
 
                 <!-- 2. Название трека и исполнитель -->
@@ -43,7 +50,8 @@
                       RowDefinitions="Auto, Auto"
                       RowSpacing="2"
                       VerticalOptions="Center"
-                      InputTransparent="True">
+                      InputTransparent="True"
+                      CascadeInputTransparent="True">
                     <Label Grid.Row="0"
                            Text="{Binding CurrentTrack.Title}"
                            Style="{StaticResource TrackItemTitleLabelStyle}" />

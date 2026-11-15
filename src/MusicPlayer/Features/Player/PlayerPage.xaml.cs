@@ -71,6 +71,12 @@ public partial class PlayerPage : ContentPage
 
     protected override bool OnBackButtonPressed()
     {
+        if (_viewModel.IsQueueOpen)
+        {
+            _viewModel.CloseQueueCommand.Execute(null);
+            return true;
+        }
+
         if (_viewModel.CollapseCommand.CanExecute(null))
         {
             _viewModel.CollapseCommand.Execute(null);

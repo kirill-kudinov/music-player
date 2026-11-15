@@ -58,7 +58,8 @@
                                     <Grid ColumnDefinitions="44, *, Auto, Auto"
                                           ColumnSpacing="10"
                                           VerticalOptions="Center"
-                                          InputTransparent="True">
+                                          InputTransparent="True"
+                                          CascadeInputTransparent="True">
 
                                         <Border Grid.Column="0"
                                                 WidthRequest="44"

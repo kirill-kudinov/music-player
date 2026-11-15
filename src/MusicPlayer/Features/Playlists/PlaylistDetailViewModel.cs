@@ -37,6 +37,8 @@ public sealed partial class PlaylistDetailViewModel : ObservableObject, IQueryAt
 
     private Guid _playlistId;
     private Playlist? _currentPlaylist;
+    private int _reloadRequested;
+    private int _suppressReloadCount;
     private bool _isDisposed;
 
     public PlayerViewModel Player { get; }
@@ -89,6 +91,8 @@ public sealed partial class PlaylistDetailViewModel : ObservableObject, IQueryAt
         _playbackQueue = playbackQueue;
         _audioPlayer = audioPlayer;
         Player = playerViewModel;
+
+        _repository.PlaylistsChanged += OnRepositoryPlaylistsChanged;
     }
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)
@@ -116,44 +120,48 @@ public sealed partial class PlaylistDetailViewModel : ObservableObject, IQueryAt
         if (_playlistId == Guid.Empty)
             return;
 
+        Interlocked.Exchange(ref _reloadRequested, 1);
         if (!await _loadGate.WaitAsync(0))
             return;
 
         try
         {
-            Result<Playlist> result = await _repository.GetPlaylistByIdAsync(_playlistId);
-            if (!result.TryGetOk(out Playlist? playlist))
+            while (Interlocked.Exchange(ref _reloadRequested, 0) == 1)
             {
-                await ShowToastSafeAsync(result.Error.Message);
-                return;
+                Result<Playlist> result = await _repository.GetPlaylistByIdAsync(_playlistId);
+                if (!result.TryGetOk(out Playlist? playlist))
+                {
+                    await ShowToastSafeAsync(result.Error.Message);
+                    continue;
+                }
+
+                List<TrackItemViewModel> trackItems = await Task.Run(() =>
+                {
+                    List<TrackItemViewModel> items = new(playlist.Tracks.Count);
+                    foreach (AudioTrack track in playlist.Tracks)
+                    {
+                        ImageSource? cover = _coverExtractor.ExtractCover(track.ContentUri);
+                        items.Add(new TrackItemViewModel(track, cover));
+                    }
+
+                    return items;
+                });
+
+                RunOnMainThread(() =>
+                {
+                    _currentPlaylist = playlist;
+                    Title = playlist.Title;
+                    CoverSource = ResolveCoverSource(playlist);
+
+                    Tracks.Clear();
+                    foreach (TrackItemViewModel item in trackItems)
+                    {
+                        Tracks.Add(item);
+                    }
+
+                    UpdateTrackSummary();
+                });
             }
-
-            List<TrackItemViewModel> trackItems = await Task.Run(() =>
-            {
-                List<TrackItemViewModel> items = new(playlist.Tracks.Count);
-                foreach (AudioTrack track in playlist.Tracks)
-                {
-                    ImageSource? cover = _coverExtractor.ExtractCover(track.ContentUri);
-                    items.Add(new TrackItemViewModel(track, cover));
-                }
-
-                return items;
-            });
-
-            RunOnMainThread(() =>
-            {
-                _currentPlaylist = playlist;
-                Title = playlist.Title;
-                CoverSource = ResolveCoverSource(playlist);
-
-                Tracks.Clear();
-                foreach (TrackItemViewModel item in trackItems)
-                {
-                    Tracks.Add(item);
-                }
-
-                UpdateTrackSummary();
-            });
         }
         finally
         {
@@ -193,11 +201,12 @@ public sealed partial class PlaylistDetailViewModel : ObservableObject, IQueryAt
     [RelayCommand]
     private async Task OpenAddTracksPickerAsync()
     {
+        HashSet<string> existingUris = new(
+            Tracks.Select(t => t.Track.ContentUri.OriginalString),
+            StringComparer.OrdinalIgnoreCase);
+
         List<SelectableTrackItemViewModel> candidates = await Task.Run(() =>
         {
-            HashSet<string> existingUris = new(
-                Tracks.Select(t => t.Track.ContentUri.OriginalString),
-                StringComparer.OrdinalIgnoreCase);
 
             List<AudioTrack> allTracks = _trackStorage.GetAllTracks();
             List<SelectableTrackItemViewModel> result = [];
@@ -252,23 +261,26 @@ public sealed partial class PlaylistDetailViewModel : ObservableObject, IQueryAt
         if (selectedTracks.Count == 0 || _playlistId == Guid.Empty)
             return;
 
-        Result<int> addResult = await _repository.AddTracksToPlaylistAsync(_playlistId, selectedTracks);
-        if (!addResult.TryGetOk(out int addedCount))
+        Interlocked.Increment(ref _suppressReloadCount);
+        try
         {
-            await ShowToastSafeAsync(addResult.Error.Message);
-            return;
+            Result<int> addResult = await _repository.AddTracksToPlaylistAsync(_playlistId, selectedTracks);
+            if (!addResult.TryGetOk(out int addedCount))
+            {
+                await ShowToastSafeAsync(addResult.Error.Message);
+                return;
+            }
+
+            await LoadPlaylistAsync();
+
+            if (addedCount > 0)
+            {
+                await ShowToastSafeAsync($"Добавлено треков: {addedCount}");
+            }
         }
-
-        if (_currentPlaylist?.IsSystem == true)
+        finally
         {
-            Player.SyncFavoriteState();
-        }
-
-        await LoadPlaylistAsync();
-
-        if (addedCount > 0)
-        {
-            await ShowToastSafeAsync($"Добавлено треков: {addedCount}");
+            Interlocked.Decrement(ref _suppressReloadCount);
         }
     }
 
@@ -313,32 +325,47 @@ public sealed partial class PlaylistDetailViewModel : ObservableObject, IQueryAt
         if (target is null || _playlistId == Guid.Empty)
             return;
 
-        Result<Unit> removeResult = await _repository.RemoveTrackFromPlaylistAsync(
-            _playlistId,
-            target.Track.ContentUri);
-
-        if (removeResult.IsError)
+        Interlocked.Increment(ref _suppressReloadCount);
+        try
         {
-            await ShowToastSafeAsync(removeResult.Error.Message);
+            Result<Unit> removeResult = await _repository.RemoveTrackFromPlaylistAsync(
+                _playlistId,
+                target.Track.ContentUri);
+
+            if (removeResult.IsError)
+            {
+                await ShowToastSafeAsync(removeResult.Error.Message);
+                return;
+            }
+
+            if (_currentPlaylist?.IsSystem == true)
+            {
+                target.Track.SetFavorite(false);
+            }
+
+            _currentPlaylist?.RemoveTrack(target.Track.ContentUri);
+            Tracks.Remove(target);
+            UpdateTrackSummary();
+
+            await ShowToastSafeAsync("Трек убран из плейлиста");
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _suppressReloadCount);
+        }
+    }
+
+    private void OnRepositoryPlaylistsChanged(object? sender, EventArgs e)
+    {
+        if (Volatile.Read(ref _suppressReloadCount) > 0 || _playlistId == Guid.Empty)
             return;
-        }
 
-        if (_currentPlaylist?.IsSystem == true && target.Track.IsFavorite)
-        {
-            target.Track.ToggleFavorite();
-            Player.SyncFavoriteState();
-        }
-
-        _currentPlaylist?.RemoveTrack(target.Track.ContentUri);
-        Tracks.Remove(target);
-        UpdateTrackSummary();
-
-        await ShowToastSafeAsync("Трек убран из плейлиста");
+        _ = LoadPlaylistAsync();
     }
 
     private void UpdateTrackSummary()
     {
-        TrackCountText = FormatTrackCount(Tracks.Count);
+        TrackCountText = PlaylistFormatting.FormatTrackCount(Tracks.Count);
         HasTracks = Tracks.Count > 0;
         PlayAllCommand.NotifyCanExecuteChanged();
     }
@@ -352,21 +379,6 @@ public sealed partial class PlaylistDetailViewModel : ObservableObject, IQueryAt
             return ImageSource.FromFile(coverPath);
 
         return PlaceholderCoverImage;
-    }
-
-    private static string FormatTrackCount(int count)
-    {
-        int abs = Math.Abs(count);
-        int mod100 = abs % 100;
-        if (mod100 is >= 11 and <= 19)
-            return $"{count} треков";
-
-        return (abs % 10) switch
-        {
-            1 => $"{count} трек",
-            2 or 3 or 4 => $"{count} трека",
-            _ => $"{count} треков"
-        };
     }
 
     private static void RunOnMainThread(Action action)
@@ -400,6 +412,7 @@ public sealed partial class PlaylistDetailViewModel : ObservableObject, IQueryAt
             return;
 
         _isDisposed = true;
+        _repository.PlaylistsChanged -= OnRepositoryPlaylistsChanged;
         _loadGate.Dispose();
     }
 }

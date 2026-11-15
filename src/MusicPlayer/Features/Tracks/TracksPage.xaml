@@ -79,6 +79,7 @@
                                             Style="{StaticResource TrackItemCoverBorderStyle}"
                                             InputTransparent="True">
                                         <Image Source="{Binding Cover}"
+                                               InputTransparent="True"
                                                Aspect="AspectFill"
                                                HorizontalOptions="Fill"
                                                VerticalOptions="Fill" />
@@ -89,7 +90,8 @@
                                           RowDefinitions="Auto, Auto"
                                           RowSpacing="2"
                                           VerticalOptions="Center"
-                                          InputTransparent="True">
+                                          InputTransparent="True"
+                                          CascadeInputTransparent="True">
                                         <Label Grid.Row="0"
                                                Text="{Binding Track.Title}"
                                                Style="{StaticResource TrackItemTitleLabelStyle}" />
@@ -136,6 +138,6 @@
 
         <!-- 5. Выбор целевого плейлиста -->
         <trackComponents:SelectPlaylistForTrackSheet IsOpen="{Binding IsSelectPlaylistSheetVisible}" />
-        
+
     </Grid>
 </ContentPage>

@@ -29,32 +29,44 @@ public sealed class TrackStorage(TrackStorageSettings trackStorageSettings)
 
         ArgumentNullException.ThrowIfNull(content);
 
-        string fullPath = Path.GetFullPath(Path.Combine(trackStorageSettings.BaseDirectory, relativePath));
-        string? directoryPath = Path.GetDirectoryName(fullPath);
-
-        if (!string.IsNullOrEmpty(directoryPath) && !Directory.Exists(directoryPath))
+        try
         {
-            Directory.CreateDirectory(directoryPath);
+            string safeName = Path.GetFileName(relativePath);
+            if (string.IsNullOrWhiteSpace(safeName))
+                return Result.Fail(ImportErrors.PathIsEmpty);
+
+            string fullPath = Path.GetFullPath(Path.Combine(trackStorageSettings.BaseDirectory, safeName));
+            string? directoryPath = Path.GetDirectoryName(fullPath);
+
+            if (!string.IsNullOrEmpty(directoryPath) && !Directory.Exists(directoryPath))
+            {
+                Directory.CreateDirectory(directoryPath);
+            }
+
+            const int bufferSize = 81920;
+
+            await using (var destinationStream = new FileStream(
+                fullPath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize,
+                useAsync: true))
+            {
+                await content.CopyToAsync(destinationStream, bufferSize);
+                await destinationStream.FlushAsync();
+            }
+
+            _excludedPaths.Remove(fullPath);
+            TrackAdded?.Invoke(this, fullPath);
+
+            return Result.Ok(fullPath);
         }
-
-        const int bufferSize = 81920;
-
-        await using (var destinationStream = new FileStream(
-            fullPath,
-            FileMode.Create,
-            FileAccess.Write,
-            FileShare.None,
-            bufferSize,
-            useAsync: true))
+        catch (Exception ex)
         {
-            await content.CopyToAsync(destinationStream, bufferSize);
-            await destinationStream.FlushAsync();
+            Debug.WriteLine($"[TrackStorage] AddTrackAsync failed: {ex.Message}");
+            return Result.Fail(ImportErrors.AudioFileNotFound);
         }
-
-        _excludedPaths.Remove(fullPath);
-        TrackAdded?.Invoke(this, fullPath);
-
-        return Result.Ok(fullPath);
     }
 
     public Task<Result<string>> AddTrackAsync(string relativePath, FileStream content) =>
@@ -69,7 +81,7 @@ public sealed class TrackStorage(TrackStorageSettings trackStorageSettings)
         if (contentUri is null)
             return;
 
-        string rawPath = contentUri.IsFile ? contentUri.LocalPath : contentUri.OriginalString;
+        string rawPath = (contentUri.IsAbsoluteUri && contentUri.IsFile) ? contentUri.LocalPath : contentUri.OriginalString;
         if (string.IsNullOrWhiteSpace(rawPath))
             return;
 

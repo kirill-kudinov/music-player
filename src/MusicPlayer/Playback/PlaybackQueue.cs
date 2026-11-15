@@ -19,6 +19,10 @@ public partial class PlaybackQueue : IPlaybackQueue
             ? _playbackTracks[_currentIndex]
             : null;
 
+    public IReadOnlyList<AudioTrack> Tracks => _playbackTracks;
+
+    public int CurrentIndex => _currentIndex;
+
     public bool HasNext => _playbackTracks.Count > 0 &&
         (RepeatMode != PlaybackRepeatMode.Off || _currentIndex < _playbackTracks.Count - 1);
 
@@ -87,6 +91,49 @@ public partial class PlaybackQueue : IPlaybackQueue
         }
 
         return removedFromOriginal || removedFromPlayback;
+    }
+
+    public void MoveItem(int oldIndex, int newIndex)
+    {
+        if (oldIndex == newIndex ||
+            oldIndex < 0 || oldIndex >= _playbackTracks.Count ||
+            newIndex < 0 || newIndex >= _playbackTracks.Count)
+        {
+            return;
+        }
+
+        AudioTrack item = _playbackTracks[oldIndex];
+        _playbackTracks.RemoveAt(oldIndex);
+        _playbackTracks.Insert(newIndex, item);
+
+        if (_currentIndex == oldIndex)
+        {
+            _currentIndex = newIndex;
+        }
+        else if (oldIndex < _currentIndex && newIndex >= _currentIndex)
+        {
+            _currentIndex--;
+        }
+        else if (oldIndex > _currentIndex && newIndex <= _currentIndex)
+        {
+            _currentIndex++;
+        }
+    }
+
+    public bool JumpTo(int index)
+    {
+        if (index < 0 || index >= _playbackTracks.Count)
+            return false;
+
+        _currentIndex = index;
+        return true;
+    }
+
+    public void Clear()
+    {
+        _originalTracks.Clear();
+        _playbackTracks.Clear();
+        _currentIndex = -1;
     }
 
     public AudioTrack? MoveNext()
@@ -178,8 +225,20 @@ public partial class PlaybackQueue : IPlaybackQueue
             _playbackTracks.AddRange(_originalTracks);
         }
 
-        _currentIndex = keepCurrent is not null
-            ? _playbackTracks.IndexOf(keepCurrent)
-            : (_playbackTracks.Count > 0 ? 0 : -1);
+        if (_playbackTracks.Count == 0)
+        {
+            _currentIndex = -1;
+            return;
+        }
+
+        if (keepCurrent is not null)
+        {
+            int idx = _playbackTracks.IndexOf(keepCurrent);
+            _currentIndex = idx >= 0 ? idx : 0;
+        }
+        else
+        {
+            _currentIndex = 0;
+        }
     }
 }

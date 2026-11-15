@@ -3,6 +3,7 @@ using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Maui.Controls;
 using MusicPlayer.Core.Playlists;
+using MusicPlayer.Features.Playlists;
 
 namespace MusicPlayer.Features.Tracks;
 
@@ -33,7 +34,7 @@ public sealed partial class SelectablePlaylistItemViewModel : ObservableObject
         Playlist = playlist;
         InitiallyContainsTrack = containsTrack;
         _isSelected = containsTrack;
-        TrackCountText = FormatTrackCount(playlist.TrackCount);
+        TrackCountText = PlaylistFormatting.FormatTrackCount(playlist.TrackCount);
         CoverSource = ResolveCoverSource(playlist);
     }
 
@@ -46,20 +47,5 @@ public sealed partial class SelectablePlaylistItemViewModel : ObservableObject
             return ImageSource.FromFile(coverPath);
 
         return PlaceholderCoverImage;
-    }
-
-    private static string FormatTrackCount(int count)
-    {
-        int abs = Math.Abs(count);
-        int mod100 = abs % 100;
-        if (mod100 is >= 11 and <= 19)
-            return $"{count} треков";
-
-        return (abs % 10) switch
-        {
-            1 => $"{count} трек",
-            2 or 3 or 4 => $"{count} трека",
-            _ => $"{count} треков"
-        };
     }
 }

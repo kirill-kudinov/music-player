@@ -2,7 +2,11 @@ using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Maui.Controls;
+using Microsoft.Maui.Storage;
+using Encoding = System.Text.Encoding;
 #if ANDROID
 using Android.Media;
 using Application = Android.App.Application;
@@ -12,19 +16,56 @@ namespace MusicPlayer.Playback;
 
 public sealed class AndroidTrackCoverExtractor : ITrackCoverExtractor
 {
-    private readonly ConcurrentDictionary<string, byte[]?> _coverCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, string?> _coverFileCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly string _cacheDirectory = Path.Combine(FileSystem.Current.CacheDirectory, "track_covers");
 
     public ImageSource? ExtractCover(Uri? contentUri)
     {
         if (contentUri is null)
             return null;
 
-        string key = contentUri.IsFile ? contentUri.LocalPath : contentUri.OriginalString;
-        byte[]? cachedBytes = _coverCache.GetOrAdd(key, _ => ExtractCoverBytes(contentUri));
+        string key = (contentUri.IsAbsoluteUri && contentUri.IsFile)
+            ? contentUri.LocalPath
+            : contentUri.OriginalString;
 
-        return cachedBytes is { Length: > 0 }
-            ? ImageSource.FromStream(() => new MemoryStream(cachedBytes, writable: false))
-            : null;
+        string? cachedFilePath = _coverFileCache.GetOrAdd(key, _ => ResolveOrExtractCoverFile(contentUri, key));
+
+        if (!string.IsNullOrEmpty(cachedFilePath) && File.Exists(cachedFilePath))
+            return ImageSource.FromFile(cachedFilePath);
+
+        return null;
+    }
+
+    private string? ResolveOrExtractCoverFile(Uri contentUri, string key)
+    {
+        try
+        {
+            Directory.CreateDirectory(_cacheDirectory);
+
+            string fileName = $"{ComputeKeyHash(key)}.img";
+            string targetPath = Path.Combine(_cacheDirectory, fileName);
+
+            if (File.Exists(targetPath) && new FileInfo(targetPath).Length > 0)
+                return targetPath;
+
+            byte[]? coverBytes = ExtractCoverBytes(contentUri);
+            if (coverBytes is not { Length: > 0 })
+                return null;
+
+            File.WriteAllBytes(targetPath, coverBytes);
+            return targetPath;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[AndroidTrackCoverExtractor] Ошибка кэширования обложки: {ex.Message}");
+            return null;
+        }
+    }
+
+    private static string ComputeKeyHash(string key)
+    {
+        byte[] hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(key));
+        return Convert.ToHexString(hashBytes);
     }
 
     private static byte[]? ExtractCoverBytes(Uri contentUri)
@@ -33,7 +74,7 @@ public sealed class AndroidTrackCoverExtractor : ITrackCoverExtractor
         using var retriever = new MediaMetadataRetriever();
         try
         {
-            if (contentUri.IsFile && File.Exists(contentUri.LocalPath))
+            if (contentUri.IsAbsoluteUri && contentUri.IsFile && File.Exists(contentUri.LocalPath))
             {
                 retriever.SetDataSource(contentUri.LocalPath);
             }
@@ -64,7 +105,7 @@ public sealed class AndroidTrackCoverExtractor : ITrackCoverExtractor
             }
             catch
             {
-                // 
+                // Ignore release errors
             }
         }
 #endif

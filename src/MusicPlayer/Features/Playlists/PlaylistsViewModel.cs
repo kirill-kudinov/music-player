@@ -34,6 +34,7 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     private PlaylistItemViewModel? _editingPlaylist;
     private string? _unsavedPickedCoverPath;
     private int _suppressReloadCount;
+    private int _reloadRequested;
     private bool _isDisposed;
 
     public PlayerViewModel Player { get; }
@@ -105,19 +106,23 @@ public sealed partial class PlaylistsViewModel : ObservableObject, IDisposable
     {
         Player.Tick();
 
+        Interlocked.Exchange(ref _reloadRequested, 1);
         if (!await _loadGate.WaitAsync(0))
             return;
 
         try
         {
-            Result<IReadOnlyList<Playlist>> result = await _repository.GetAllPlaylistsAsync();
-            if (!result.TryGetOk(out IReadOnlyList<Playlist>? loaded))
+            while (Interlocked.Exchange(ref _reloadRequested, 0) == 1)
             {
-                await ShowToastSafeAsync(result.Error.Message);
-                return;
-            }
+                Result<IReadOnlyList<Playlist>> result = await _repository.GetAllPlaylistsAsync();
+                if (!result.TryGetOk(out IReadOnlyList<Playlist>? loaded))
+                {
+                    await ShowToastSafeAsync(result.Error.Message);
+                    continue;
+                }
 
-            RunOnMainThread(() => SyncPlaylistCollection(loaded));
+                RunOnMainThread(() => SyncPlaylistCollection(loaded));
+            }
         }
         finally
         {

@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             xmlns:player="clr-namespace:MusicPlayer.Features.Player"
+             x:Class="MusicPlayer.Features.Player.Components.PlayerQueueSheet"
+             x:DataType="player:PlayerViewModel"
+             x:Name="RootView"
+             IsVisible="False"
+             InputTransparent="True"
+             ZIndex="40">
+
+    <Grid x:Name="SheetRoot"
+          BackgroundColor="{StaticResource BgCanvas}"
+          Opacity="0"
+          TranslationY="48"
+          Padding="16,44,16,28"
+          RowDefinitions="Auto, Auto, *, Auto">
+
+        <!-- 1. Шапка очереди: название контекста слева, количество треков и общая длительность справа (без замочка) -->
+        <Grid Grid.Row="0"
+              ColumnDefinitions="*, Auto"
+              ColumnSpacing="12"
+              Padding="4,6,4,14">
+
+            <Label Grid.Column="0"
+                   Text="{Binding PlayContextTitle}"
+                   FontFamily="Roboto-Bold"
+                   FontSize="18"
+                   TextColor="{StaticResource TextPrimary}"
+                   LineBreakMode="TailTruncation"
+                   MaxLines="1"
+                   VerticalOptions="Center" />
+
+            <VerticalStackLayout Grid.Column="1"
+                                 Spacing="2"
+                                 HorizontalOptions="End"
+                                 VerticalOptions="Center">
+                <Label Text="{Binding QueueTrackCountText}"
+                       FontFamily="Roboto-Regular"
+                       FontSize="12"
+                       TextColor="{StaticResource TextSecondary}"
+                       HorizontalTextAlignment="End" />
+
+                <Label Text="{Binding QueueTotalDurationText}"
+                       FontFamily="Roboto-Regular"
+                       FontSize="12"
+                       TextColor="{StaticResource TextMuted}"
+                       HorizontalTextAlignment="End" />
+            </VerticalStackLayout>
+        </Grid>
+
+        <!-- Тонкий разделитель -->
+        <BoxView Grid.Row="1"
+                 HeightRequest="1"
+                 Color="{StaticResource BorderSubtle}"
+                 Margin="0,0,0,8" />
+
+        <!-- 2. Список треков в очереди с перетаскиванием за 2 полоски (=) -->
+        <CollectionView Grid.Row="2"
+                        x:Name="QueueCollectionView"
+                        ItemsSource="{Binding QueueTracks}"
+                        SelectionMode="None">
+            <CollectionView.ItemsLayout>
+                <LinearItemsLayout Orientation="Vertical"
+                                   ItemSpacing="4" />
+            </CollectionView.ItemsLayout>
+
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="player:QueueTrackItemViewModel">
+                    <Border HeightRequest="66"
+                            Padding="10,8"
+                            StrokeThickness="1"
+                            Stroke="Transparent"
+                            BackgroundColor="Transparent">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="14" />
+                        </Border.StrokeShape>
+                        <Border.Triggers>
+                            <DataTrigger TargetType="Border"
+                                         Binding="{Binding IsCurrent}"
+                                         Value="True">
+                                <Setter Property="BackgroundColor" Value="{StaticResource PopupSurfaceColor}" />
+                                <Setter Property="Stroke" Value="{StaticResource PopupBorderColor}" />
+                            </DataTrigger>
+                        </Border.Triggers>
+
+                        <Grid ColumnDefinitions="*, 36, 44"
+                              ColumnSpacing="4"
+                              VerticalOptions="Center">
+
+                            <!-- Нажатие на трек (обложка + название + исполнитель) запускает его воспроизведение -->
+                            <Grid Grid.Column="0"
+                                  ColumnDefinitions="48, *"
+                                  ColumnSpacing="12"
+                                  BackgroundColor="Transparent"
+                                  VerticalOptions="Center">
+                                <Grid.GestureRecognizers>
+                                    <TapGestureRecognizer
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type player:PlayerViewModel}}, Path=PlayQueueItemCommand, x:DataType=player:PlayerViewModel}"
+                                        CommandParameter="{Binding .}" />
+                                </Grid.GestureRecognizers>
+
+                                <Border Grid.Column="0"
+                                        Style="{StaticResource MiniPlayerCoverBorderStyle}"
+                                        InputTransparent="True">
+                                    <Image Source="{Binding Cover}"
+                                           Aspect="AspectFill"
+                                           HorizontalOptions="Fill"
+                                           VerticalOptions="Fill"
+                                           InputTransparent="True" />
+                                </Border>
+
+                                <Grid Grid.Column="1"
+                                      RowDefinitions="Auto, Auto"
+                                      RowSpacing="2"
+                                      VerticalOptions="Center"
+                                      InputTransparent="True"
+                                      CascadeInputTransparent="True">
+                                    <Label Grid.Row="0"
+                                           Text="{Binding Track.Title}"
+                                           Style="{StaticResource TrackItemTitleLabelStyle}" />
+
+                                    <Label Grid.Row="1"
+                                           Text="{Binding Subtitle}"
+                                           Style="{StaticResource TrackItemSubtitleLabelStyle}" />
+                                </Grid>
+                            </Grid>
+
+                            <!-- Кнопка «Три точки» -->
+                            <Border Grid.Column="1"
+                                    WidthRequest="36"
+                                    HeightRequest="44"
+                                    BackgroundColor="Transparent"
+                                    StrokeThickness="0"
+                                    VerticalOptions="Center">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnQueueItemMoreTapped"
+                                                          CommandParameter="{Binding .}" />
+                                </Border.GestureRecognizers>
+
+                                <Image Source="track_more_vert.png"
+                                       WidthRequest="20"
+                                       HeightRequest="20"
+                                       Aspect="AspectFit"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center"
+                                       InputTransparent="True" />
+                            </Border>
+
+                            <!-- Ручка перетаскивания (2 горизонтальные полоски =) для перемещения вверх/вниз -->
+                            <Grid Grid.Column="2"
+                                  WidthRequest="44"
+                                  HeightRequest="50"
+                                  BackgroundColor="Transparent"
+                                  VerticalOptions="Center"
+                                  HorizontalOptions="Center"
+                                  HandlerChanged="OnDragHandleHandlerChanged">
+                                <Grid.GestureRecognizers>
+                                    <PanGestureRecognizer PanUpdated="OnDragHandlePanUpdated" />
+                                </Grid.GestureRecognizers>
+
+                                <VerticalStackLayout Spacing="5"
+                                                     HorizontalOptions="Center"
+                                                     VerticalOptions="Center"
+                                                     InputTransparent="True"
+                                                     CascadeInputTransparent="True">
+                                    <BoxView WidthRequest="18"
+                                             HeightRequest="2"
+                                             CornerRadius="1"
+                                             Color="{StaticResource TextSecondary}" />
+                                    <BoxView WidthRequest="18"
+                                             HeightRequest="2"
+                                             CornerRadius="1"
+                                             Color="{StaticResource TextSecondary}" />
+                                </VerticalStackLayout>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <!-- 3. Нижняя панель очереди: Shuffle — Свернуть (шеврон вниз) — Repeat -->
+        <Grid Grid.Row="3"
+              ColumnDefinitions="48, *, 48"
+              Padding="8,14,8,6"
+              VerticalOptions="End">
+
+            <Border Grid.Column="0"
+                    Style="{StaticResource TransportSideButtonStyle}"
+                    HorizontalOptions="Start">
+                <Border.Behaviors>
+                    <toolkit:TouchBehavior BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
+                                           Command="{Binding ToggleShuffleCommand}"
+                                           DefaultAnimationDuration="150"
+                                           DefaultAnimationEasing="{x:Static Easing.CubicInOut}"
+                                           DefaultBackgroundColor="Transparent"
+                                           HoveredBackgroundColor="{StaticResource TouchOverlayLight}"
+                                           PressedBackgroundColor="{StaticResource TouchOverlayLight}"
+                                           PressedScale="0.90"
+                                           PressedOpacity="0.75"
+                                           ShouldMakeChildrenInputTransparent="True" />
+                </Border.Behaviors>
+
+                <Image Style="{StaticResource ShuffleIconImageStyle}"
+                       InputTransparent="True">
+                    <Image.Triggers>
+                        <DataTrigger TargetType="Image"
+                                     Binding="{Binding IsShuffleEnabled}"
+                                     Value="True">
+                            <Setter Property="Source" Value="player_shuffle.png" />
+                        </DataTrigger>
+                        <DataTrigger TargetType="Image"
+                                     Binding="{Binding IsShuffleEnabled}"
+                                     Value="False">
+                            <Setter Property="Source" Value="player_shuffle_inactive.png" />
+                        </DataTrigger>
+                    </Image.Triggers>
+                </Image>
+            </Border>
+
+            <Border Grid.Column="1"
+                    Style="{StaticResource PlayerIconButtonStyle}"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center">
+                <Border.Behaviors>
+                    <toolkit:TouchBehavior BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
+                                           Command="{Binding CloseQueueCommand}"
+                                           DefaultAnimationDuration="150"
+                                           DefaultAnimationEasing="{x:Static Easing.CubicInOut}"
+                                           DefaultBackgroundColor="Transparent"
+                                           HoveredBackgroundColor="{StaticResource TouchOverlayLight}"
+                                           PressedBackgroundColor="{StaticResource TouchOverlayLight}"
+                                           PressedScale="0.90"
+                                           PressedOpacity="0.75"
+                                           ShouldMakeChildrenInputTransparent="True" />
+                </Border.Behaviors>
+
+                <Image Source="player_chevron_down.png"
+                       Style="{StaticResource PlayerStaticIconImageStyle}"
+                       InputTransparent="True" />
+            </Border>
+
+            <Border Grid.Column="2"
+                    Style="{StaticResource TransportSideButtonStyle}"
+                    HorizontalOptions="End">
+                <Border.Behaviors>
+                    <toolkit:TouchBehavior BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
+                                           Command="{Binding CycleRepeatModeCommand}"
+                                           DefaultAnimationDuration="150"
+                                           DefaultAnimationEasing="{x:Static Easing.CubicInOut}"
+                                           DefaultBackgroundColor="Transparent"
+                                           HoveredBackgroundColor="{StaticResource TouchOverlayLight}"
+                                           PressedBackgroundColor="{StaticResource TouchOverlayLight}"
+                                           PressedScale="0.90"
+                                           PressedOpacity="0.75"
+                                           ShouldMakeChildrenInputTransparent="True" />
+                </Border.Behaviors>
+
+                <Image Style="{StaticResource RepeatIconImageStyle}"
+                       InputTransparent="True">
+                    <Image.Triggers>
+                        <DataTrigger TargetType="Image"
+                                     Binding="{Binding RepeatMode}"
+                                     Value="{x:Static player:PlaybackRepeatMode.Off}">
+                            <Setter Property="Source" Value="player_repeat_inactive.png" />
+                        </DataTrigger>
+                        <DataTrigger TargetType="Image"
+                                     Binding="{Binding RepeatMode}"
+                                     Value="{x:Static player:PlaybackRepeatMode.All}">
+                            <Setter Property="Source" Value="player_repeat_active.png" />
+                        </DataTrigger>
+                        <DataTrigger TargetType="Image"
+                                     Binding="{Binding RepeatMode}"
+                                     Value="{x:Static player:PlaybackRepeatMode.One}">
+                            <Setter Property="Source" Value="player_repeat_one.png" />
+                        </DataTrigger>
+                    </Image.Triggers>
+                </Image>
+            </Border>
+        </Grid>
+
+    </Grid>
+</ContentView>

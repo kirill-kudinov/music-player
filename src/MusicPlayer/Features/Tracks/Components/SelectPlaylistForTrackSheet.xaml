@@ -5,6 +5,7 @@
              xmlns:tracks="clr-namespace:MusicPlayer.Features.Tracks"
              x:Class="MusicPlayer.Features.Tracks.Components.SelectPlaylistForTrackSheet"
              x:DataType="tracks:TracksViewModel"
+             x:Name="RootView"
              IsVisible="False"
              InputTransparent="True"
              ZIndex="30">
@@ -23,7 +24,7 @@
         <Border x:Name="ModalCard"
                 Style="{StaticResource PlaylistModalCardStyle}"
                 Opacity="0"
-                Scale="0.95"
+                TranslationY="28"
                 HorizontalOptions="Fill"
                 VerticalOptions="Center"
                 Margin="16,32">
@@ -37,70 +38,83 @@
                     <Label Text="Добавить в плейлист"
                            Style="{StaticResource PlaylistModalTitleLabelStyle}" />
 
-                    <Label Text="{Binding SelectedTrackForPlaylist.Track.Title}"
+                    <Label Text="{Binding SelectedTrackForPlaylist.Track.Title, FallbackValue='', TargetNullValue=''}"
                            Style="{StaticResource TrackItemSubtitleLabelStyle}"
                            HorizontalOptions="Center"
                            HorizontalTextAlignment="Center" />
                 </VerticalStackLayout>
 
-                <CollectionView Grid.Row="1"
-                                HeightRequest="320"
-                                ItemsSource="{Binding AvailablePlaylistsForTrack}"
-                                SelectionMode="None">
-                    <CollectionView.ItemsLayout>
-                        <LinearItemsLayout Orientation="Vertical"
-                                           ItemSpacing="8" />
-                    </CollectionView.ItemsLayout>
+                <Grid Grid.Row="1" HeightRequest="320">
+                    <CollectionView IsVisible="{Binding HasAvailablePlaylistsForTrack}"
+                                    ItemsSource="{Binding AvailablePlaylistsForTrack}"
+                                    SelectionMode="None">
+                        <CollectionView.ItemsLayout>
+                            <LinearItemsLayout Orientation="Vertical"
+                                               ItemSpacing="8" />
+                        </CollectionView.ItemsLayout>
 
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="tracks:SelectablePlaylistItemViewModel">
-                            <Border Style="{StaticResource SelectableTrackCardBorderStyle}">
-                                <Border.GestureRecognizers>
-                                    <TapGestureRecognizer
-                                        Command="{Binding Source={RelativeSource AncestorType={x:Type tracks:TracksViewModel}}, Path=TogglePlaylistSelectionCommand, x:DataType=tracks:TracksViewModel}"
-                                        CommandParameter="{Binding .}" />
-                                </Border.GestureRecognizers>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="tracks:SelectablePlaylistItemViewModel">
+                                <Border Style="{StaticResource SelectableTrackCardBorderStyle}">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type tracks:TracksViewModel}}, Path=TogglePlaylistSelectionCommand, x:DataType=tracks:TracksViewModel}"
+                                            CommandParameter="{Binding .}" />
+                                    </Border.GestureRecognizers>
 
-                                <Grid ColumnDefinitions="44, *, Auto"
-                                      ColumnSpacing="12"
-                                      VerticalOptions="Center"
-                                      InputTransparent="True">
-
-                                    <Border Grid.Column="0"
-                                            WidthRequest="44"
-                                            HeightRequest="44"
-                                            Style="{StaticResource MiniPlayerCoverBorderStyle}"
-                                            InputTransparent="True">
-                                        <Image Source="{Binding CoverSource}"
-                                               Aspect="AspectFill"
-                                               HorizontalOptions="Fill"
-                                               VerticalOptions="Fill" />
-                                    </Border>
-
-                                    <Grid Grid.Column="1"
-                                          RowDefinitions="Auto, Auto"
-                                          RowSpacing="2"
+                                    <Grid ColumnDefinitions="44, *, Auto"
+                                          ColumnSpacing="12"
                                           VerticalOptions="Center"
-                                          InputTransparent="True">
-                                        <Label Grid.Row="0"
-                                               Text="{Binding Title}"
-                                               Style="{StaticResource TrackItemTitleLabelStyle}" />
+                                          InputTransparent="True"
+                                          CascadeInputTransparent="True">
 
-                                        <Label Grid.Row="1"
-                                               Text="{Binding TrackCountText}"
-                                               Style="{StaticResource TrackItemSubtitleLabelStyle}" />
-                                    </Grid>
+                                        <Border Grid.Column="0"
+                                                WidthRequest="44"
+                                                HeightRequest="44"
+                                                Style="{StaticResource MiniPlayerCoverBorderStyle}"
+                                                InputTransparent="True">
+                                            <Image Source="{Binding CoverSource}"
+                                                   Aspect="AspectFill"
+                                                   HorizontalOptions="Fill"
+                                                   VerticalOptions="Fill"
+                                                   InputTransparent="True" />
+                                        </Border>
 
-                                    <CheckBox Grid.Column="2"
-                                              IsChecked="{Binding IsSelected, Mode=OneWay}"
-                                              Color="{StaticResource White}"
+                                        <Grid Grid.Column="1"
+                                              RowDefinitions="Auto, Auto"
+                                              RowSpacing="2"
                                               VerticalOptions="Center"
-                                              InputTransparent="True" />
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
+                                              InputTransparent="True"
+                                              CascadeInputTransparent="True">
+                                            <Label Grid.Row="0"
+                                                   Text="{Binding Title}"
+                                                   Style="{StaticResource TrackItemTitleLabelStyle}"
+                                                   InputTransparent="True" />
+
+                                            <Label Grid.Row="1"
+                                                   Text="{Binding TrackCountText}"
+                                                   Style="{StaticResource TrackItemSubtitleLabelStyle}"
+                                                   InputTransparent="True" />
+                                        </Grid>
+
+                                        <CheckBox Grid.Column="2"
+                                                  IsChecked="{Binding IsSelected, Mode=OneWay}"
+                                                  Color="{StaticResource White}"
+                                                  VerticalOptions="Center"
+                                                  InputTransparent="True" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+
+                    <Label IsVisible="{Binding HasNoAvailablePlaylistsForTrack}"
+                           Text="Нет доступных плейлистов"
+                           Style="{StaticResource TrackItemSubtitleLabelStyle}"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center"
+                           HorizontalTextAlignment="Center" />
+                </Grid>
 
                 <Grid Grid.Row="2"
                       ColumnDefinitions="*, *"

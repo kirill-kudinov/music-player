@@ -16,10 +16,12 @@ public sealed class SqlitePlaylistRepository(
     PlaylistCoverStorage coverStorage) : IPlaylistRepository, IDisposable
 {
     private readonly SemaphoreSlim _initGate = new(1, 1);
+    private readonly SemaphoreSlim _writeGate = new(1, 1);
     private SQLiteAsyncConnection? _connection;
     private bool _isDisposed;
 
     public event EventHandler? PlaylistsChanged;
+    public event EventHandler<TrackFavoriteChangedEventArgs>? TrackFavoriteChanged;
 
     public async Task<Result<IReadOnlyList<Playlist>>> GetAllPlaylistsAsync(
         CancellationToken cancellationToken = default)
@@ -43,16 +45,9 @@ public sealed class SqlitePlaylistRepository(
                 .ToListAsync()
                 .ConfigureAwait(false);
 
-            Dictionary<string, AudioTrack> tracksByUri = new(StringComparer.OrdinalIgnoreCase);
-            foreach (TrackCacheEntity cached in cachedTracks)
-            {
-                if (TryRestoreAudioTrack(cached, out AudioTrack? track))
-                {
-                    tracksByUri[cached.ContentUri] = track!;
-                }
-            }
-
+            Dictionary<string, AudioTrack> tracksByUri = BuildTrackLookup(cachedTracks);
             Dictionary<string, List<AudioTrack>> tracksByPlaylistId = new(StringComparer.OrdinalIgnoreCase);
+
             foreach (PlaylistTrackEntity link in links)
             {
                 if (!tracksByUri.TryGetValue(link.TrackContentUri, out AudioTrack? track))
@@ -123,25 +118,22 @@ public sealed class SqlitePlaylistRepository(
                 .ToListAsync()
                 .ConfigureAwait(false);
 
-            List<TrackCacheEntity> cachedTracks = await db.Table<TrackCacheEntity>()
-                .ToListAsync()
-                .ConfigureAwait(false);
-
-            Dictionary<string, AudioTrack> tracksByUri = new(StringComparer.OrdinalIgnoreCase);
-            foreach (TrackCacheEntity cached in cachedTracks)
+            List<AudioTrack> orderedTracks = [];
+            if (links.Count > 0)
             {
-                if (TryRestoreAudioTrack(cached, out AudioTrack? track))
-                {
-                    tracksByUri[cached.ContentUri] = track!;
-                }
-            }
+                List<TrackCacheEntity> cachedTracks = await db.Table<TrackCacheEntity>()
+                    .ToListAsync()
+                    .ConfigureAwait(false);
 
-            List<AudioTrack> orderedTracks = new(links.Count);
-            foreach (PlaylistTrackEntity link in links)
-            {
-                if (tracksByUri.TryGetValue(link.TrackContentUri, out AudioTrack? track))
+                Dictionary<string, AudioTrack> tracksByUri = BuildTrackLookup(cachedTracks);
+                orderedTracks.Capacity = links.Count;
+
+                foreach (PlaylistTrackEntity link in links)
                 {
-                    orderedTracks.Add(track);
+                    if (tracksByUri.TryGetValue(link.TrackContentUri, out AudioTrack? track))
+                    {
+                        orderedTracks.Add(track);
+                    }
                 }
             }
 
@@ -174,63 +166,81 @@ public sealed class SqlitePlaylistRepository(
         if (tracks.Count == 0)
             return Result.Ok(0);
 
+        await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             SQLiteAsyncConnection db = await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
             string playlistIdKey = playlistId.ToString("N");
 
-            PlaylistEntity? playlistEntity = await db.FindAsync<PlaylistEntity>(playlistIdKey).ConfigureAwait(false);
-            if (playlistEntity is null)
-                return Result.Fail(PlaylistErrors.NotFound);
-
-            List<PlaylistTrackEntity> existingLinks = await db.Table<PlaylistTrackEntity>()
-                .Where(pt => pt.PlaylistId == playlistIdKey)
-                .ToListAsync()
-                .ConfigureAwait(false);
-
-            HashSet<string> existingUris = new(
-                existingLinks.Select(l => l.TrackContentUri),
-                StringComparer.OrdinalIgnoreCase);
-
-            int nextSortOrder = existingLinks.Count == 0
-                ? 0
-                : existingLinks.Max(l => l.SortOrder) + 1;
-
+            bool playlistMissing = false;
+            bool isSystemPlaylist = false;
             int addedCount = 0;
+            List<Uri> newlyFavoritedUris = [];
 
-            foreach (AudioTrack track in tracks)
+            await db.RunInTransactionAsync(conn =>
             {
-                string uri = track.ContentUri.OriginalString;
-                if (playlistEntity.IsSystem && !track.IsFavorite)
+                PlaylistEntity? playlistEntity = conn.Find<PlaylistEntity>(playlistIdKey);
+                if (playlistEntity is null)
                 {
-                    track.ToggleFavorite();
+                    playlistMissing = true;
+                    return;
                 }
 
-                TrackCacheEntity? existingCache = await db.FindAsync<TrackCacheEntity>(uri).ConfigureAwait(false);
-                bool isFavorite = playlistEntity.IsSystem || track.IsFavorite || (existingCache?.IsFavorite ?? false);
-                if (isFavorite && !track.IsFavorite)
+                isSystemPlaylist = playlistEntity.IsSystem;
+
+                List<PlaylistTrackEntity> existingLinks = conn.Table<PlaylistTrackEntity>()
+                    .Where(pt => pt.PlaylistId == playlistIdKey)
+                    .ToList();
+
+                HashSet<string> existingUris = new(
+                    existingLinks.Select(l => l.TrackContentUri),
+                    StringComparer.OrdinalIgnoreCase);
+
+                int nextSortOrder = existingLinks.Count == 0
+                    ? 0
+                    : existingLinks.Max(l => l.SortOrder) + 1;
+
+                foreach (AudioTrack track in tracks)
                 {
-                    track.ToggleFavorite();
+                    string uri = track.ContentUri.OriginalString;
+                    TrackCacheEntity? existingCache = conn.Find<TrackCacheEntity>(uri);
+                    bool isFavorite = isSystemPlaylist || (existingCache?.IsFavorite ?? track.IsFavorite);
+
+                    UpsertTrackCacheSync(conn, track, isFavorite);
+
+                    if (isSystemPlaylist)
+                    {
+                        track.SetFavorite(true);
+                    }
+
+                    if (!existingUris.Add(uri))
+                        continue;
+
+                    conn.Insert(new PlaylistTrackEntity
+                    {
+                        PlaylistId = playlistIdKey,
+                        TrackContentUri = uri,
+                        SortOrder = nextSortOrder++
+                    });
+
+                    addedCount++;
+                    if (isSystemPlaylist)
+                    {
+                        newlyFavoritedUris.Add(track.ContentUri);
+                    }
                 }
+            }).ConfigureAwait(false);
 
-                await UpsertTrackCacheAsync(db, track, isFavorite).ConfigureAwait(false);
-
-                if (existingUris.Contains(uri))
-                    continue;
-
-                await db.InsertAsync(new PlaylistTrackEntity
-                {
-                    PlaylistId = playlistIdKey,
-                    TrackContentUri = uri,
-                    SortOrder = nextSortOrder++
-                }).ConfigureAwait(false);
-
-                existingUris.Add(uri);
-                addedCount++;
-            }
+            if (playlistMissing)
+                return Result.Fail(PlaylistErrors.NotFound);
 
             if (addedCount > 0)
             {
+                foreach (Uri uri in newlyFavoritedUris)
+                {
+                    TrackFavoriteChanged?.Invoke(this, new TrackFavoriteChangedEventArgs(uri, isFavorite: true));
+                }
+
                 PlaylistsChanged?.Invoke(this, EventArgs.Empty);
             }
 
@@ -240,6 +250,124 @@ public sealed class SqlitePlaylistRepository(
         {
             Debug.WriteLine($"[SqlitePlaylistRepository] AddTracksToPlaylistAsync failed: {ex.Message}");
             return Result.Fail(PlaylistStorageErrors.DatabaseOperationFailed);
+        }
+        finally
+        {
+            _writeGate.Release();
+        }
+    }
+
+    public async Task<Result<int>> UpdateTrackPlaylistsAsync(
+        AudioTrack track,
+        IReadOnlyList<Guid> playlistIdsToAdd,
+        IReadOnlyList<Guid> playlistIdsToRemove,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(track);
+
+        if (playlistIdsToAdd.Count == 0 && playlistIdsToRemove.Count == 0)
+            return Result.Ok(0);
+
+        await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            SQLiteAsyncConnection db = await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
+            string uri = track.ContentUri.OriginalString;
+
+            int changesCount = 0;
+            bool? updatedFavoriteState = null;
+
+            await db.RunInTransactionAsync(conn =>
+            {
+                TrackCacheEntity? existingCache = conn.Find<TrackCacheEntity>(uri);
+                bool currentFavorite = existingCache?.IsFavorite ?? track.IsFavorite;
+
+                foreach (Guid playlistId in playlistIdsToAdd)
+                {
+                    if (playlistId == Guid.Empty)
+                        continue;
+
+                    string playlistIdKey = playlistId.ToString("N");
+                    PlaylistEntity? playlistEntity = conn.Find<PlaylistEntity>(playlistIdKey);
+                    if (playlistEntity is null)
+                        continue;
+
+                    if (playlistEntity.IsSystem)
+                    {
+                        currentFavorite = true;
+                        updatedFavoriteState = true;
+                    }
+
+                    PlaylistTrackEntity? existingLink = conn.Table<PlaylistTrackEntity>()
+                        .Where(pt => pt.PlaylistId == playlistIdKey && pt.TrackContentUri == uri).FirstOrDefault();
+
+                    if (existingLink is not null)
+                        continue;
+
+                    int nextSortOrder = GetNextSortOrderSync(conn, playlistIdKey);
+                    conn.Insert(new PlaylistTrackEntity
+                    {
+                        PlaylistId = playlistIdKey,
+                        TrackContentUri = uri,
+                        SortOrder = nextSortOrder
+                    });
+
+                    changesCount++;
+                }
+
+                foreach (Guid playlistId in playlistIdsToRemove)
+                {
+                    if (playlistId == Guid.Empty)
+                        continue;
+
+                    string playlistIdKey = playlistId.ToString("N");
+                    PlaylistEntity? playlistEntity = conn.Find<PlaylistEntity>(playlistIdKey);
+                    if (playlistEntity is null)
+                        continue;
+
+                    int deleted = conn.Execute(
+                        "DELETE FROM playlist_tracks WHERE PlaylistId = ? AND TrackContentUri = ?",
+                        playlistIdKey,
+                        uri);
+
+                    if (playlistEntity.IsSystem && deleted > 0)
+                    {
+                        currentFavorite = false;
+                        updatedFavoriteState = false;
+                    }
+
+                    if (deleted > 0)
+                    {
+                        changesCount++;
+                    }
+                }
+
+                UpsertTrackCacheSync(conn, track, currentFavorite);
+            }).ConfigureAwait(false);
+
+            if (updatedFavoriteState.HasValue)
+            {
+                track.SetFavorite(updatedFavoriteState.Value);
+                TrackFavoriteChanged?.Invoke(
+                    this,
+                    new TrackFavoriteChangedEventArgs(track.ContentUri, updatedFavoriteState.Value));
+            }
+
+            if (changesCount > 0)
+            {
+                PlaylistsChanged?.Invoke(this, EventArgs.Empty);
+            }
+
+            return Result.Ok(changesCount);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[SqlitePlaylistRepository] UpdateTrackPlaylistsAsync failed: {ex.Message}");
+            return Result.Fail(PlaylistStorageErrors.DatabaseOperationFailed);
+        }
+        finally
+        {
+            _writeGate.Release();
         }
     }
 
@@ -251,26 +379,45 @@ public sealed class SqlitePlaylistRepository(
         if (playlistId == Guid.Empty)
             return Result.Fail(PlaylistErrors.EmptyId);
 
+        await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             SQLiteAsyncConnection db = await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
             string playlistIdKey = playlistId.ToString("N");
             string uri = contentUri.OriginalString;
 
-            PlaylistEntity? playlistEntity = await db.FindAsync<PlaylistEntity>(playlistIdKey).ConfigureAwait(false);
-            if (playlistEntity is null)
+            bool playlistMissing = false;
+            bool removedFromFavorites = false;
+
+            await db.RunInTransactionAsync(conn =>
+            {
+                PlaylistEntity? playlistEntity = conn.Find<PlaylistEntity>(playlistIdKey);
+                if (playlistEntity is null)
+                {
+                    playlistMissing = true;
+                    return;
+                }
+
+                conn.Execute(
+                    "DELETE FROM playlist_tracks WHERE PlaylistId = ? AND TrackContentUri = ?",
+                    playlistIdKey,
+                    uri);
+
+                if (playlistEntity.IsSystem)
+                {
+                    conn.Execute(
+                        "UPDATE track_cache SET IsFavorite = 0 WHERE ContentUri = ?",
+                        uri);
+                    removedFromFavorites = true;
+                }
+            }).ConfigureAwait(false);
+
+            if (playlistMissing)
                 return Result.Fail(PlaylistErrors.NotFound);
 
-            await db.ExecuteAsync(
-                "DELETE FROM playlist_tracks WHERE PlaylistId = ? AND TrackContentUri = ?",
-                playlistIdKey,
-                uri).ConfigureAwait(false);
-
-            if (playlistEntity.IsSystem)
+            if (removedFromFavorites)
             {
-                await db.ExecuteAsync(
-                    "UPDATE track_cache SET IsFavorite = 0 WHERE ContentUri = ?",
-                    uri).ConfigureAwait(false);
+                TrackFavoriteChanged?.Invoke(this, new TrackFavoriteChangedEventArgs(contentUri, isFavorite: false));
             }
 
             PlaylistsChanged?.Invoke(this, EventArgs.Empty);
@@ -280,6 +427,10 @@ public sealed class SqlitePlaylistRepository(
         {
             Debug.WriteLine($"[SqlitePlaylistRepository] RemoveTrackFromPlaylistAsync failed: {ex.Message}");
             return Result.Fail(PlaylistStorageErrors.DatabaseOperationFailed);
+        }
+        finally
+        {
+            _writeGate.Release();
         }
     }
 
@@ -292,6 +443,7 @@ public sealed class SqlitePlaylistRepository(
         if (!createResult.TryGetOk(out Playlist? playlist))
             return Result.Fail(createResult.Error);
 
+        await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             SQLiteAsyncConnection db = await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
@@ -315,6 +467,10 @@ public sealed class SqlitePlaylistRepository(
             Debug.WriteLine($"[SqlitePlaylistRepository] CreatePlaylistAsync failed: {ex.Message}");
             return Result.Fail(PlaylistStorageErrors.DatabaseOperationFailed);
         }
+        finally
+        {
+            _writeGate.Release();
+        }
     }
 
     public async Task<Result<Playlist>> UpdatePlaylistAsync(
@@ -337,6 +493,7 @@ public sealed class SqlitePlaylistRepository(
             return Result.Fail(coverResult.Error);
         }
 
+        await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             SQLiteAsyncConnection db = await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
@@ -371,6 +528,10 @@ public sealed class SqlitePlaylistRepository(
             Debug.WriteLine($"[SqlitePlaylistRepository] UpdatePlaylistAsync failed: {ex.Message}");
             return Result.Fail(PlaylistStorageErrors.DatabaseOperationFailed);
         }
+        finally
+        {
+            _writeGate.Release();
+        }
     }
 
     public async Task<Result<Unit>> DeletePlaylistAsync(
@@ -381,16 +542,22 @@ public sealed class SqlitePlaylistRepository(
         if (canDeleteResult.IsError)
             return Result.Fail(canDeleteResult.Error);
 
+        await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             SQLiteAsyncConnection db = await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
             string playlistIdKey = playlist.Id.ToString("N");
 
-            await db.ExecuteAsync(
-                "DELETE FROM playlist_tracks WHERE PlaylistId = ?",
-                playlistIdKey).ConfigureAwait(false);
+            int deletedCount = 0;
+            await db.RunInTransactionAsync(conn =>
+            {
+                conn.Execute(
+                    "DELETE FROM playlist_tracks WHERE PlaylistId = ?",
+                    playlistIdKey);
 
-            int deletedCount = await db.DeleteAsync<PlaylistEntity>(playlistIdKey).ConfigureAwait(false);
+                deletedCount = conn.Delete<PlaylistEntity>(playlistIdKey);
+            }).ConfigureAwait(false);
+
             if (deletedCount == 0)
                 return Result.Fail(PlaylistErrors.NotFound);
 
@@ -407,8 +574,16 @@ public sealed class SqlitePlaylistRepository(
             Debug.WriteLine($"[SqlitePlaylistRepository] DeletePlaylistAsync failed: {ex.Message}");
             return Result.Fail(PlaylistStorageErrors.DatabaseOperationFailed);
         }
+        finally
+        {
+            _writeGate.Release();
+        }
     }
 
+    /// <summary>
+    /// Синхронизирует состояние IsFavorite загруженных из памяти треков с базой данных.
+    /// База данных является единственным источником истины для избранного.
+    /// </summary>
     public async Task<Result<Unit>> SyncFavoritesWithTracksAsync(
         IReadOnlyList<AudioTrack> tracks,
         CancellationToken cancellationToken = default)
@@ -416,57 +591,36 @@ public sealed class SqlitePlaylistRepository(
         if (tracks.Count == 0)
             return Result.Ok();
 
+        await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             SQLiteAsyncConnection db = await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
-            PlaylistEntity favoritesEntity = await GetOrCreateFavoritesEntityAsync(db).ConfigureAwait(false);
 
-            List<PlaylistTrackEntity> favoriteLinks = await db.Table<PlaylistTrackEntity>()
-                .Where(pt => pt.PlaylistId == favoritesEntity.Id)
-                .OrderBy(pt => pt.SortOrder)
-                .ToListAsync()
-                .ConfigureAwait(false);
-
-            HashSet<string> favoriteUris = new(
-                favoriteLinks.Select(l => l.TrackContentUri),
-                StringComparer.OrdinalIgnoreCase);
-
-            int nextSortOrder = favoriteLinks.Count == 0
-                ? 0
-                : favoriteLinks.Max(l => l.SortOrder) + 1;
-
-            bool changed = false;
-
-            foreach (AudioTrack track in tracks)
+            await db.RunInTransactionAsync(conn =>
             {
-                string uri = track.ContentUri.OriginalString;
-                bool isInDbFavorites = favoriteUris.Contains(uri);
+                PlaylistEntity favoritesEntity = GetOrCreateFavoritesEntitySync(conn);
 
-                if (isInDbFavorites && !track.IsFavorite)
+                List<PlaylistTrackEntity> favoriteLinks = conn.Table<PlaylistTrackEntity>()
+                    .Where(pt => pt.PlaylistId == favoritesEntity.Id)
+                    .ToList();
+
+                HashSet<string> favoriteUris = new(
+                    favoriteLinks.Select(l => l.TrackContentUri),
+                    StringComparer.OrdinalIgnoreCase);
+
+                foreach (AudioTrack track in tracks)
                 {
-                    track.ToggleFavorite();
-                }
-                else if (!isInDbFavorites && track.IsFavorite)
-                {
-                    await db.InsertAsync(new PlaylistTrackEntity
+                    string uri = track.ContentUri.OriginalString;
+                    bool isInDbFavorites = favoriteUris.Contains(uri);
+
+                    if (track.IsFavorite != isInDbFavorites)
                     {
-                        PlaylistId = favoritesEntity.Id,
-                        TrackContentUri = uri,
-                        SortOrder = nextSortOrder++
-                    }).ConfigureAwait(false);
+                        track.SetFavorite(isInDbFavorites);
+                    }
 
-                    favoriteUris.Add(uri);
-                    isInDbFavorites = true;
-                    changed = true;
+                    UpsertTrackCacheSync(conn, track, isInDbFavorites);
                 }
-
-                await UpsertTrackCacheAsync(db, track, isInDbFavorites).ConfigureAwait(false);
-            }
-
-            if (changed)
-            {
-                PlaylistsChanged?.Invoke(this, EventArgs.Empty);
-            }
+            }).ConfigureAwait(false);
 
             return Result.Ok();
         }
@@ -475,6 +629,10 @@ public sealed class SqlitePlaylistRepository(
             Debug.WriteLine($"[SqlitePlaylistRepository] SyncFavoritesWithTracksAsync failed: {ex.Message}");
             return Result.Fail(PlaylistStorageErrors.DatabaseOperationFailed);
         }
+        finally
+        {
+            _writeGate.Release();
+        }
     }
 
     public async Task<Result<Unit>> SetTrackFavoriteAsync(
@@ -482,34 +640,38 @@ public sealed class SqlitePlaylistRepository(
         bool isFavorite,
         CancellationToken cancellationToken = default)
     {
+        await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             SQLiteAsyncConnection db = await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
-            PlaylistEntity favoritesEntity = await GetOrCreateFavoritesEntityAsync(db).ConfigureAwait(false);
-
             string uri = track.ContentUri.OriginalString;
-            await UpsertTrackCacheAsync(db, track, isFavorite).ConfigureAwait(false);
 
-            PlaylistTrackEntity? existingLink = await db.Table<PlaylistTrackEntity>()
-                .Where(pt => pt.PlaylistId == favoritesEntity.Id && pt.TrackContentUri == uri)
-                .FirstOrDefaultAsync()
-                .ConfigureAwait(false);
-
-            if (isFavorite && existingLink is null)
+            await db.RunInTransactionAsync(conn =>
             {
-                int nextSortOrder = await GetNextSortOrderAsync(db, favoritesEntity.Id).ConfigureAwait(false);
-                await db.InsertAsync(new PlaylistTrackEntity
+                PlaylistEntity favoritesEntity = GetOrCreateFavoritesEntitySync(conn);
+                UpsertTrackCacheSync(conn, track, isFavorite);
+
+                PlaylistTrackEntity? existingLink = conn.Table<PlaylistTrackEntity>()
+                    .Where(pt => pt.PlaylistId == favoritesEntity.Id && pt.TrackContentUri == uri).FirstOrDefault();
+
+                if (isFavorite && existingLink is null)
                 {
-                    PlaylistId = favoritesEntity.Id,
-                    TrackContentUri = uri,
-                    SortOrder = nextSortOrder
-                }).ConfigureAwait(false);
-            }
-            else if (!isFavorite && existingLink is not null)
-            {
-                await db.DeleteAsync(existingLink).ConfigureAwait(false);
-            }
+                    int nextSortOrder = GetNextSortOrderSync(conn, favoritesEntity.Id);
+                    conn.Insert(new PlaylistTrackEntity
+                    {
+                        PlaylistId = favoritesEntity.Id,
+                        TrackContentUri = uri,
+                        SortOrder = nextSortOrder
+                    });
+                }
+                else if (!isFavorite && existingLink is not null)
+                {
+                    conn.Delete(existingLink);
+                }
+            }).ConfigureAwait(false);
 
+            track.SetFavorite(isFavorite);
+            TrackFavoriteChanged?.Invoke(this, new TrackFavoriteChangedEventArgs(track.ContentUri, isFavorite));
             PlaylistsChanged?.Invoke(this, EventArgs.Empty);
             return Result.Ok();
         }
@@ -518,6 +680,10 @@ public sealed class SqlitePlaylistRepository(
             Debug.WriteLine($"[SqlitePlaylistRepository] SetTrackFavoriteAsync failed: {ex.Message}");
             return Result.Fail(PlaylistStorageErrors.DatabaseOperationFailed);
         }
+        finally
+        {
+            _writeGate.Release();
+        }
     }
 
     public async Task<Result<Unit>> AddTrackToPlaylistAsync(
@@ -525,45 +691,72 @@ public sealed class SqlitePlaylistRepository(
         AudioTrack track,
         CancellationToken cancellationToken = default)
     {
+        if (playlistId == Guid.Empty)
+            return Result.Fail(PlaylistErrors.EmptyId);
+
+        await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             SQLiteAsyncConnection db = await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
             string playlistIdKey = playlistId.ToString("N");
+            string uri = track.ContentUri.OriginalString;
 
-            PlaylistEntity? playlistEntity = await db.FindAsync<PlaylistEntity>(playlistIdKey).ConfigureAwait(false);
-            if (playlistEntity is null)
-                return Result.Fail(PlaylistErrors.NotFound);
+            bool playlistMissing = false;
+            bool alreadyInPlaylist = false;
+            bool isSystemPlaylist = false;
 
-            if (playlistEntity.IsSystem)
+            await db.RunInTransactionAsync(conn =>
             {
-                if (!track.IsFavorite)
+                PlaylistEntity? playlistEntity = conn.Find<PlaylistEntity>(playlistIdKey);
+                if (playlistEntity is null)
                 {
-                    track.ToggleFavorite();
+                    playlistMissing = true;
+                    return;
                 }
 
-                return await SetTrackFavoriteAsync(track, isFavorite: true, cancellationToken).ConfigureAwait(false);
+                isSystemPlaylist = playlistEntity.IsSystem;
+
+                TrackCacheEntity? existingCache = conn.Find<TrackCacheEntity>(uri);
+                bool isFavorite = isSystemPlaylist || (existingCache?.IsFavorite ?? track.IsFavorite);
+                UpsertTrackCacheSync(conn, track, isFavorite);
+
+                PlaylistTrackEntity? existingLink = conn.Table<PlaylistTrackEntity>()
+                    .Where(pt => pt.PlaylistId == playlistIdKey && pt.TrackContentUri == uri).FirstOrDefault();
+
+                if (existingLink is not null)
+                {
+                    alreadyInPlaylist = true;
+                    return;
+                }
+
+                int nextSortOrder = GetNextSortOrderSync(conn, playlistIdKey);
+                conn.Insert(new PlaylistTrackEntity
+                {
+                    PlaylistId = playlistIdKey,
+                    TrackContentUri = uri,
+                    SortOrder = nextSortOrder
+                });
+            }).ConfigureAwait(false);
+
+            if (playlistMissing)
+                return Result.Fail(PlaylistErrors.NotFound);
+
+            if (isSystemPlaylist)
+            {
+                track.SetFavorite(true);
+                TrackFavoriteChanged?.Invoke(this, new TrackFavoriteChangedEventArgs(track.ContentUri, isFavorite: true));
             }
 
-            string uri = track.ContentUri.OriginalString;
-            TrackCacheEntity? existingCache = await db.FindAsync<TrackCacheEntity>(uri).ConfigureAwait(false);
-            bool isFavorite = track.IsFavorite || (existingCache?.IsFavorite ?? false);
-            await UpsertTrackCacheAsync(db, track, isFavorite).ConfigureAwait(false);
-
-            PlaylistTrackEntity? existingLink = await db.Table<PlaylistTrackEntity>()
-                .Where(pt => pt.PlaylistId == playlistIdKey && pt.TrackContentUri == uri)
-                .FirstOrDefaultAsync()
-                .ConfigureAwait(false);
-
-            if (existingLink is not null)
-                return Result.Fail(PlaylistErrors.TrackAlreadyInPlaylist);
-
-            int nextSortOrder = await GetNextSortOrderAsync(db, playlistIdKey).ConfigureAwait(false);
-            await db.InsertAsync(new PlaylistTrackEntity
+            if (alreadyInPlaylist)
             {
-                PlaylistId = playlistIdKey,
-                TrackContentUri = uri,
-                SortOrder = nextSortOrder
-            }).ConfigureAwait(false);
+                if (isSystemPlaylist)
+                {
+                    PlaylistsChanged?.Invoke(this, EventArgs.Empty);
+                    return Result.Ok();
+                }
+
+                return Result.Fail(PlaylistErrors.TrackAlreadyInPlaylist);
+            }
 
             PlaylistsChanged?.Invoke(this, EventArgs.Empty);
             return Result.Ok();
@@ -573,23 +766,32 @@ public sealed class SqlitePlaylistRepository(
             Debug.WriteLine($"[SqlitePlaylistRepository] AddTrackToPlaylistAsync failed: {ex.Message}");
             return Result.Fail(PlaylistStorageErrors.DatabaseOperationFailed);
         }
+        finally
+        {
+            _writeGate.Release();
+        }
     }
 
     public async Task<Result<Unit>> RemoveTrackFromEverywhereAsync(
         Uri contentUri,
         CancellationToken cancellationToken = default)
     {
+        await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             SQLiteAsyncConnection db = await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
             string uri = contentUri.OriginalString;
 
-            await db.ExecuteAsync(
-                "DELETE FROM playlist_tracks WHERE TrackContentUri = ?",
-                uri).ConfigureAwait(false);
+            await db.RunInTransactionAsync(conn =>
+            {
+                conn.Execute(
+                    "DELETE FROM playlist_tracks WHERE TrackContentUri = ?",
+                    uri);
 
-            await db.DeleteAsync<TrackCacheEntity>(uri).ConfigureAwait(false);
+                conn.Delete<TrackCacheEntity>(uri);
+            }).ConfigureAwait(false);
 
+            TrackFavoriteChanged?.Invoke(this, new TrackFavoriteChangedEventArgs(contentUri, isFavorite: false));
             PlaylistsChanged?.Invoke(this, EventArgs.Empty);
             return Result.Ok();
         }
@@ -597,6 +799,10 @@ public sealed class SqlitePlaylistRepository(
         {
             Debug.WriteLine($"[SqlitePlaylistRepository] RemoveTrackFromEverywhereAsync failed: {ex.Message}");
             return Result.Fail(PlaylistStorageErrors.DatabaseOperationFailed);
+        }
+        finally
+        {
+            _writeGate.Release();
         }
     }
 
@@ -616,7 +822,7 @@ public sealed class SqlitePlaylistRepository(
             await connection.CreateTableAsync<TrackCacheEntity>().ConfigureAwait(false);
             await connection.CreateTableAsync<PlaylistTrackEntity>().ConfigureAwait(false);
 
-            await GetOrCreateFavoritesEntityAsync(connection).ConfigureAwait(false);
+            await connection.RunInTransactionAsync(conn => GetOrCreateFavoritesEntitySync(conn)).ConfigureAwait(false);
 
             _connection = connection;
             return _connection;
@@ -627,12 +833,10 @@ public sealed class SqlitePlaylistRepository(
         }
     }
 
-    private static async Task<PlaylistEntity> GetOrCreateFavoritesEntityAsync(SQLiteAsyncConnection db)
+    private static PlaylistEntity GetOrCreateFavoritesEntitySync(SQLiteConnection conn)
     {
-        PlaylistEntity? existing = await db.Table<PlaylistEntity>()
-            .Where(p => p.IsSystem)
-            .FirstOrDefaultAsync()
-            .ConfigureAwait(false);
+        PlaylistEntity? existing = conn.Table<PlaylistEntity>()
+            .Where(p => p.IsSystem).FirstOrDefault();
 
         if (existing is not null)
             return existing;
@@ -647,12 +851,12 @@ public sealed class SqlitePlaylistRepository(
             CreatedAtUtcTicks = DateTime.UtcNow.Ticks
         };
 
-        await db.InsertAsync(entity).ConfigureAwait(false);
+        conn.Insert(entity);
         return entity;
     }
 
-    private static async Task UpsertTrackCacheAsync(
-        SQLiteAsyncConnection db,
+    private static void UpsertTrackCacheSync(
+        SQLiteConnection conn,
         AudioTrack track,
         bool isFavorite)
     {
@@ -666,23 +870,37 @@ public sealed class SqlitePlaylistRepository(
             IsFavorite = isFavorite
         };
 
-        await db.InsertOrReplaceAsync(entity).ConfigureAwait(false);
+        conn.InsertOrReplace(entity);
     }
 
-    private static async Task<int> GetNextSortOrderAsync(SQLiteAsyncConnection db, string playlistId)
+    private static int GetNextSortOrderSync(SQLiteConnection conn, string playlistId)
     {
-        List<PlaylistTrackEntity> links = await db.Table<PlaylistTrackEntity>()
+        List<PlaylistTrackEntity> links = conn.Table<PlaylistTrackEntity>()
             .Where(pt => pt.PlaylistId == playlistId)
-            .ToListAsync()
-            .ConfigureAwait(false);
+            .ToList();
 
         return links.Count == 0 ? 0 : links.Max(l => l.SortOrder) + 1;
+    }
+
+    private static Dictionary<string, AudioTrack> BuildTrackLookup(IEnumerable<TrackCacheEntity> cachedTracks)
+    {
+        Dictionary<string, AudioTrack> tracksByUri = new(StringComparer.OrdinalIgnoreCase);
+        foreach (TrackCacheEntity cached in cachedTracks)
+        {
+            if (TryRestoreAudioTrack(cached, out AudioTrack? track))
+            {
+                tracksByUri[cached.ContentUri] = track!;
+            }
+        }
+
+        return tracksByUri;
     }
 
     private static bool TryRestoreAudioTrack(TrackCacheEntity cached, out AudioTrack? track)
     {
         track = null;
-        if (!Uri.TryCreate(cached.ContentUri, UriKind.RelativeOrAbsolute, out Uri? uri))
+        if (!Uri.TryCreate(cached.ContentUri, UriKind.Absolute, out Uri? uri) &&
+            !Uri.TryCreate(cached.ContentUri, UriKind.RelativeOrAbsolute, out uri))
             return false;
 
         TimeSpan duration = TimeSpan.FromTicks(cached.DurationTicks);
@@ -707,5 +925,6 @@ public sealed class SqlitePlaylistRepository(
 
         _isDisposed = true;
         _initGate.Dispose();
+        _writeGate.Dispose();
     }
 }

@@ -59,6 +59,8 @@ public partial class AudioTrack : ObservableObject
 
     public void ToggleFavorite() => IsFavorite = !IsFavorite;
 
+    public void SetFavorite(bool isFavorite) => IsFavorite = isFavorite;
+
     public Result<Unit> RenameTitle(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
