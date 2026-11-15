@@ -32,7 +32,7 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
     private readonly IPlaylistRepository _playlistRepository;
     private readonly IMediaStoreAudioScanner? _mediaStoreScanner;
 
-    private readonly List<TrackItemViewModel> _allTracks = [];
+    private readonly HashSet<TrackItemViewModel> _allTracks = [];
     private readonly Dictionary<string, TrackItemViewModel> _tracksByKey = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _loadedPaths = new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim _loadGate = new(1, 1);
