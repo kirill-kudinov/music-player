@@ -22,7 +22,7 @@
                        FontSize="26"
                        TextColor="{StaticResource TextPrimary}" />
 
-                <Label Text="Сканирование медиатеки устройства или добавление файлов вручную"
+                <Label Text="Сканирование медиатеки устройства через MediaStore или добавление файлов вручную"
                        FontFamily="Roboto-Regular"
                        FontSize="14"
                        LineHeight="1.25"
@@ -134,7 +134,7 @@
                                    FontSize="16"
                                    TextColor="{StaticResource TextPrimary}" />
 
-                            <Label Text="Один или несколько треков (MP3, FLAC, WAV, M4A, AAC, OPUS)"
+                            <Label Text="Один или несколько треков (MP3, FLAC, WAV, M4A)"
                                    FontFamily="Roboto-Regular"
                                    FontSize="13"
                                    LineHeight="1.2"

@@ -250,6 +250,7 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
         _trackStorage.RemoveTrackFromPlayer(target.Track.ContentUri);
         await _playlistRepository.RemoveTrackFromEverywhereAsync(target.Track.ContentUri);
 
+        await ShowToastSafeAsync($"Трек «{target.Track.Title}» удалён");
     }
 
     [RelayCommand]
