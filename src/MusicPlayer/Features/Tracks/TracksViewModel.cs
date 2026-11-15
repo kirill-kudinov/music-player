@@ -32,7 +32,7 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
     private readonly IPlaylistRepository _playlistRepository;
     private readonly IMediaStoreAudioScanner? _mediaStoreScanner;
 
-    private readonly HashSet<TrackItemViewModel> _allTracks = [];
+    private readonly List<TrackItemViewModel> _allTracks = [];
     private readonly Dictionary<string, TrackItemViewModel> _tracksByKey = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _loadedPaths = new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim _loadGate = new(1, 1);
@@ -61,9 +61,9 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
 
     public PlayerViewModel Player { get; }
 
-    public ObservableCollection<TrackItemViewModel> FilteredTracks { get; } = [];
+    public BatchObservableCollection<TrackItemViewModel> FilteredTracks { get; } = [];
 
-    public ObservableCollection<SelectablePlaylistItemViewModel> AvailablePlaylistsForTrack { get; } = [];
+    public BatchObservableCollection<SelectablePlaylistItemViewModel> AvailablePlaylistsForTrack { get; } = [];
 
     public TracksViewModel(
         TrackStorageSettings storageSettings,
@@ -295,11 +295,7 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
 
         RunOnMainThread(() =>
         {
-            AvailablePlaylistsForTrack.Clear();
-            foreach (SelectablePlaylistItemViewModel item in items)
-            {
-                AvailablePlaylistsForTrack.Add(item);
-            }
+            AvailablePlaylistsForTrack.ReplaceAll(items);
 
             HasAvailablePlaylistsForTrack = AvailablePlaylistsForTrack.Count > 0;
             SelectedTrackForPlaylist = target;
@@ -494,14 +490,16 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
 
     private void ApplyFilter(string? query)
     {
-        FilteredTracks.Clear();
+        List<TrackItemViewModel> matched = new(_allTracks.Count);
         foreach (var item in _allTracks)
         {
             if (MatchesFilter(item, query))
             {
-                FilteredTracks.Add(item);
+                matched.Add(item);
             }
         }
+
+        FilteredTracks.ReplaceAll(matched);
     }
 
     private static bool MatchesFilter(TrackItemViewModel item, string? query)

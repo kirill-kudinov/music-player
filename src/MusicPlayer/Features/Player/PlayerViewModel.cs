@@ -24,7 +24,6 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
     private readonly PlayerAppearanceController _appearance;
     private readonly MediaNotificationBridge _notificationBridge;
 
-    private AudioTrack? _currentTrack;
     private bool _isUserSeeking;
     private bool _isSyncingFromEngine;
     private long _lastSeekCommitTimestampMs;
@@ -36,6 +35,8 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private string _playContextTitle = "Сейчас играет";
+
+    private AudioTrack? _currentTrack;
 
     public AudioTrack? CurrentTrack
     {
@@ -58,8 +59,9 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private Color _dominantGradientColor = PlayerAppearanceController.DefaultWineColor;
 
-    [ObservableProperty]
     private bool _isPlaying;
+    private TimeSpan _position;
+    private TimeSpan _duration;
 
     [ObservableProperty]
     private bool _isShuffleEnabled;
@@ -67,12 +69,42 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private PlaybackRepeatMode _repeatMode = PlaybackRepeatMode.Off;
 
-    [ObservableProperty]
-    private TimeSpan _position;
+    public bool IsPlaying
+    {
+        get => _isPlaying;
+        set
+        {
+            if (SetProperty(ref _isPlaying, value))
+            {
+                _notificationBridge.Sync(CurrentTrack, value, Position);
+            }
+        }
+    }
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(DurationSeconds))]
-    private TimeSpan _duration;
+    public TimeSpan Position
+    {
+        get => _position;
+        set
+        {
+            if (SetProperty(ref _position, value))
+            {
+                HandlePositionChanged(value);
+            }
+        }
+    }
+
+    public TimeSpan Duration
+    {
+        get => _duration;
+        set
+        {
+            if (SetProperty(ref _duration, value))
+            {
+                OnPropertyChanged(nameof(DurationSeconds));
+                HandleDurationChanged(value);
+            }
+        }
+    }
 
     [ObservableProperty]
     private string _formattedPosition = "0:00";
@@ -86,6 +118,10 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
 
     public double DurationSeconds => Duration.TotalSeconds > 0.1d ? Duration.TotalSeconds : 1d;
 
+    /// <summary>
+    /// Привязано к Slider.Value (TwoWay).
+    /// Поддерживает как плавное перетаскивание ползунка (Drag), так и одиночный тап по дорожке Slider.
+    /// </summary>
     public double PositionSeconds
     {
         get => Math.Clamp(Position.TotalSeconds, 0d, DurationSeconds);
@@ -157,12 +193,7 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
         }
     }
 
-    partial void OnIsPlayingChanged(bool value)
-    {
-        _notificationBridge.Sync(CurrentTrack, value, Position);
-    }
-
-    partial void OnPositionChanged(TimeSpan value)
+    private void HandlePositionChanged(TimeSpan value)
     {
         int currentSecond = (int)Math.Floor(Math.Max(0d, value.TotalSeconds));
         if (currentSecond != _lastDisplayedPositionSecond)
@@ -177,7 +208,7 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
         }
     }
 
-    partial void OnDurationChanged(TimeSpan value)
+    private void HandleDurationChanged(TimeSpan value)
     {
         int durationSecond = (int)Math.Floor(Math.Max(0d, value.TotalSeconds));
         if (durationSecond != _lastDisplayedDurationSecond)
@@ -386,7 +417,7 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
         NotifySkipCommandsCanExecuteChanged();
         if (Queue.IsOpen)
         {
-            Queue.Refresh();
+            Queue.ReorderToMatchQueue();
         }
     }
 
