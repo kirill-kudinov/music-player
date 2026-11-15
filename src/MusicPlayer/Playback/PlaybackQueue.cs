@@ -1,16 +1,15 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using MusicPlayer.Core.AudioTracks;
 using MusicPlayer.Features.Player;
 
 namespace MusicPlayer.Playback;
 
-public partial class PlaybackQueue : IPlaybackQueue
+public sealed class PlaybackQueue : IPlaybackQueue
 {
     private readonly List<AudioTrack> _originalTracks = [];
+    private readonly HashSet<AudioTrack> _originalTrackSet = [];
     private readonly List<AudioTrack> _playbackTracks = [];
-    private readonly Random _random = new();
 
     private int _currentIndex = -1;
 
@@ -35,7 +34,15 @@ public partial class PlaybackQueue : IPlaybackQueue
     public void SetTracks(IReadOnlyCollection<AudioTrack> tracks, AudioTrack current)
     {
         _originalTracks.Clear();
-        _originalTracks.AddRange(tracks);
+        _originalTrackSet.Clear();
+
+        foreach (AudioTrack track in tracks)
+        {
+            if (_originalTrackSet.Add(track))
+            {
+                _originalTracks.Add(track);
+            }
+        }
 
         RebuildPlaybackList(current);
     }
@@ -44,7 +51,7 @@ public partial class PlaybackQueue : IPlaybackQueue
     {
         ArgumentNullException.ThrowIfNull(track);
 
-        if (!_originalTracks.Contains(track))
+        if (_originalTrackSet.Add(track))
         {
             _originalTracks.Add(track);
         }
@@ -64,7 +71,7 @@ public partial class PlaybackQueue : IPlaybackQueue
     {
         ArgumentNullException.ThrowIfNull(track);
 
-        bool removedFromOriginal = _originalTracks.Remove(track);
+        bool removedFromOriginal = _originalTrackSet.Remove(track) && _originalTracks.Remove(track);
         bool removedFromPlayback = false;
 
         for (int i = _playbackTracks.Count - 1; i >= 0; i--)
@@ -132,6 +139,7 @@ public partial class PlaybackQueue : IPlaybackQueue
     public void Clear()
     {
         _originalTracks.Clear();
+        _originalTrackSet.Clear();
         _playbackTracks.Clear();
         _currentIndex = -1;
     }
@@ -185,8 +193,7 @@ public partial class PlaybackQueue : IPlaybackQueue
     public void ToggleShuffle()
     {
         IsShuffleEnabled = !IsShuffleEnabled;
-        var current = CurrentTrack;
-        RebuildPlaybackList(current);
+        RebuildPlaybackList(CurrentTrack);
     }
 
     public void CycleRepeatMode()
@@ -204,30 +211,40 @@ public partial class PlaybackQueue : IPlaybackQueue
     {
         _playbackTracks.Clear();
 
-        if (IsShuffleEnabled)
-        {
-            var shuffled = _originalTracks.ToList();
-            int n = shuffled.Count;
-            while (n > 1)
-            {
-                n--;
-                int k = _random.Next(n + 1);
-                (shuffled[k], shuffled[n]) = (shuffled[n], shuffled[k]);
-            }
-
-            if (keepCurrent is not null && shuffled.Remove(keepCurrent))
-                shuffled.Insert(0, keepCurrent);
-
-            _playbackTracks.AddRange(shuffled);
-        }
-        else
-        {
-            _playbackTracks.AddRange(_originalTracks);
-        }
-
-        if (_playbackTracks.Count == 0)
+        if (_originalTracks.Count == 0)
         {
             _currentIndex = -1;
+            return;
+        }
+
+        _playbackTracks.AddRange(_originalTracks);
+
+        if (IsShuffleEnabled)
+        {
+            int startOffset = 0;
+
+            // Перемещаем текущий трек в начало за O(1) через обмен, чтобы он не прерывался
+            if (keepCurrent is not null)
+            {
+                int keepIdx = _playbackTracks.IndexOf(keepCurrent);
+                if (keepIdx >= 0)
+                {
+                    (_playbackTracks[0], _playbackTracks[keepIdx]) = (_playbackTracks[keepIdx], _playbackTracks[0]);
+                    startOffset = 1;
+                }
+            }
+
+            // 1. Fisher-Yates на диапазоне [startOffset .. Count - 1]
+            for (int i = _playbackTracks.Count - 1; i > startOffset; i--)
+            {
+                int j = Random.Shared.Next(startOffset, i + 1);
+                (_playbackTracks[i], _playbackTracks[j]) = (_playbackTracks[j], _playbackTracks[i]);
+            }
+
+            // 2. Анти-кластеризация исполнителей: стараемся не ставить подряд треки одного исполнителя
+            SpreadSameArtistTracks(startOffset);
+
+            _currentIndex = 0;
             return;
         }
 
@@ -239,6 +256,29 @@ public partial class PlaybackQueue : IPlaybackQueue
         else
         {
             _currentIndex = 0;
+        }
+    }
+
+    private void SpreadSameArtistTracks(int startOffset)
+    {
+        int count = _playbackTracks.Count;
+        if (count - startOffset < 3)
+            return;
+
+        for (int i = Math.Max(1, startOffset); i < count - 1; i++)
+        {
+            string prevArtist = _playbackTracks[i - 1].Artist;
+            if (!string.Equals(_playbackTracks[i].Artist, prevArtist, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            for (int candidate = i + 1; candidate < count; candidate++)
+            {
+                if (!string.Equals(_playbackTracks[candidate].Artist, prevArtist, StringComparison.OrdinalIgnoreCase))
+                {
+                    (_playbackTracks[i], _playbackTracks[candidate]) = (_playbackTracks[candidate], _playbackTracks[i]);
+                    break;
+                }
+            }
         }
     }
 }

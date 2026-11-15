@@ -61,7 +61,8 @@
         <CollectionView Grid.Row="2"
                         x:Name="QueueCollectionView"
                         ItemsSource="{Binding Queue.Tracks}"
-                        SelectionMode="None">
+                        SelectionMode="None"
+                        HandlerChanged="OnQueueCollectionViewHandlerChanged">
             <CollectionView.ItemsLayout>
                 <LinearItemsLayout Orientation="Vertical"
                                    ItemSpacing="4" />
@@ -171,22 +172,15 @@
               VerticalOptions="End">
 
             <Border Grid.Column="0"
+                    x:Name="ShuffleButton"
                     Style="{StaticResource TransportSideButtonStyle}"
                     HorizontalOptions="Start">
-                <Border.Behaviors>
-                    <toolkit:TouchBehavior BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
-                                           Command="{Binding ToggleShuffleCommand}"
-                                           DefaultAnimationDuration="150"
-                                           DefaultAnimationEasing="{x:Static Easing.CubicInOut}"
-                                           DefaultBackgroundColor="Transparent"
-                                           HoveredBackgroundColor="{StaticResource TouchOverlayLight}"
-                                           PressedBackgroundColor="{StaticResource TouchOverlayLight}"
-                                           PressedScale="0.90"
-                                           PressedOpacity="0.75"
-                                           ShouldMakeChildrenInputTransparent="True" />
-                </Border.Behaviors>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnShuffleButtonTapped" />
+                </Border.GestureRecognizers>
 
-                <Image Style="{StaticResource ShuffleIconImageStyle}"
+                <Image x:Name="ShuffleIcon"
+                       Style="{StaticResource ShuffleIconImageStyle}"
                        InputTransparent="True">
                     <Image.Triggers>
                         <DataTrigger TargetType="Image"

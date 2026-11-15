@@ -20,6 +20,7 @@ public partial class PlayerQueueSheet : ContentView
     private Border? _draggedRow;
     private QueueTrackItemViewModel? _draggedItem;
     private double _accumulatedSwapOffset;
+    private bool _isShufflingAnimation;
 
     public static readonly BindableProperty IsOpenProperty = BindableProperty.Create(
         nameof(IsOpen),
@@ -257,6 +258,44 @@ public partial class PlayerQueueSheet : ContentView
                     AndroidRenderLayerHelper.SetHardwareLayer(row, false);
                 }
                 break;
+        }
+    }
+
+    private void OnQueueCollectionViewHandlerChanged(object? sender, EventArgs e)
+    {
+#if ANDROID
+        if (QueueCollectionView.Handler?.PlatformView is AndroidX.RecyclerView.Widget.RecyclerView recyclerView &&
+            recyclerView.GetItemAnimator() is { } animator)
+        {
+            animator.MoveDuration = 280;
+            animator.ChangeDuration = 180;
+        }
+#endif
+    }
+
+    private async void OnShuffleButtonTapped(object? sender, TappedEventArgs e)
+    {
+        if (_isShufflingAnimation || BindingContext is not PlayerViewModel vm)
+            return;
+
+        _isShufflingAnimation = true;
+        try
+        {
+            if (vm.ToggleShuffleCommand.CanExecute(null))
+            {
+                vm.ToggleShuffleCommand.Execute(null);
+            }
+
+            await System.Threading.Tasks.Task.WhenAll(
+                ShuffleIcon.RotateToAsync(360.0, 260, Easing.CubicOut),
+                ShuffleIcon.ScaleToAsync(1.15, 120, Easing.CubicOut));
+
+            await ShuffleIcon.ScaleToAsync(1.0, 120, Easing.CubicIn);
+            ShuffleIcon.Rotation = 0.0;
+        }
+        finally
+        {
+            _isShufflingAnimation = false;
         }
     }
 
