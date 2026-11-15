@@ -1,11 +1,17 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Maui.Graphics;
+using MusicPlayer.Features.Playlists;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using MusicPlayer.Core.AudioTracks;
 using MusicPlayer.Features.Player.Animations;
+using MusicPlayer.Features.Playlists.Data;
 using MusicPlayer.Playback;
 
 namespace MusicPlayer.Features.Player;
@@ -13,12 +19,16 @@ namespace MusicPlayer.Features.Player;
 public sealed partial class PlayerViewModel : ObservableObject, IDisposable
 {
     private static readonly TimeSpan PreviousTrackRestartThreshold = TimeSpan.FromSeconds(4);
+    private static readonly Color DefaultWineColor = Color.FromArgb("#7C1919");
     private const long SeekStabilizationWindowMs = 350;
 
     private readonly IAudioPlayer _player;
     private readonly IPlaybackQueue _queue;
     private readonly ITrackCoverExtractor _coverExtractor;
     private readonly IPlayerTransitionService _transitionService;
+    private readonly IPlaylistRepository _playlistRepository;
+    private readonly IMediaNotificationService? _mediaNotificationService;
+    private CancellationTokenSource? _colorExtractionCts;
 
     private bool _isUserSeeking;
     private bool _isSyncingFromEngine;
@@ -31,6 +41,17 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
     private string _playContextTitle = "Сейчас играет";
 
     [ObservableProperty]
+    private bool _isQueueOpen;
+
+    [ObservableProperty]
+    private string _queueTrackCountText = "0 треков";
+
+    [ObservableProperty]
+    private string _queueTotalDurationText = "0:00";
+
+    public ObservableCollection<QueueTrackItemViewModel> QueueTracks { get; } = [];
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsCurrentTrackFavorite))]
     [NotifyPropertyChangedFor(nameof(HasCurrentTrack))]
     [NotifyPropertyChangedFor(nameof(CanSkipPrevious))]
@@ -38,6 +59,9 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private ImageSource? _trackCover;
+
+    [ObservableProperty]
+    private Color _dominantGradientColor = DefaultWineColor;
 
     [ObservableProperty]
     private bool _isPlaying;
@@ -106,14 +130,30 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
         IAudioPlayer player,
         IPlaybackQueue queue,
         ITrackCoverExtractor coverExtractor,
-        IPlayerTransitionService transitionService)
+        IPlayerTransitionService transitionService,
+        IPlaylistRepository playlistRepository,
+        IMediaNotificationService? mediaNotificationService = null)
     {
         _player = player;
         _queue = queue;
         _coverExtractor = coverExtractor;
         _transitionService = transitionService;
+        _playlistRepository = playlistRepository;
+        _mediaNotificationService = mediaNotificationService;
 
         _player.PlaybackCompleted += OnPlaybackCompleted;
+        _playlistRepository.TrackFavoriteChanged += OnRepositoryTrackFavoriteChanged;
+
+        if (_mediaNotificationService is not null)
+        {
+            _mediaNotificationService.PlayRequested += OnNotificationPlayRequested;
+            _mediaNotificationService.PauseRequested += OnNotificationPauseRequested;
+            _mediaNotificationService.NextRequested += OnNotificationNextRequested;
+            _mediaNotificationService.PreviousRequested += OnNotificationPreviousRequested;
+            _mediaNotificationService.SeekRequested += OnNotificationSeekRequested;
+            _mediaNotificationService.StopRequested += OnNotificationStopRequested;
+        }
+
         SyncState();
     }
 
@@ -121,6 +161,110 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
     {
         TrackCover = _coverExtractor.ExtractCover(value?.ContentUri);
         PreviousTrackCommand.NotifyCanExecuteChanged();
+        UpdateDominantGradientAsync(value?.ContentUri);
+    }
+
+    partial void OnIsPlayingChanged(bool value)
+    {
+        UpdateMediaNotification();
+    }
+
+    private void UpdateDominantGradientAsync(Uri? contentUri)
+    {
+        _colorExtractionCts?.Cancel();
+        _colorExtractionCts?.Dispose();
+        _colorExtractionCts = null;
+
+        if (contentUri is null)
+        {
+            DominantGradientColor = DefaultWineColor;
+            return;
+        }
+
+        var cts = new CancellationTokenSource();
+        _colorExtractionCts = cts;
+        CancellationToken token = cts.Token;
+
+        _ = Task.Run(() =>
+        {
+            Color? extracted = _coverExtractor.ExtractDominantColor(contentUri);
+            if (token.IsCancellationRequested)
+                return;
+
+            Color targetColor = extracted ?? DefaultWineColor;
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                if (!token.IsCancellationRequested)
+                {
+                    DominantGradientColor = targetColor;
+                }
+            });
+        }, token);
+    }
+
+    private void UpdateMediaNotification()
+    {
+        if (_mediaNotificationService is null)
+            return;
+
+        if (CurrentTrack is null)
+        {
+            _mediaNotificationService.Clear();
+        }
+        else
+        {
+            _mediaNotificationService.UpdatePlayback(CurrentTrack, IsPlaying, Position);
+        }
+    }
+
+    private void OnNotificationPlayRequested(object? sender, EventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (CurrentTrack is not null && !IsPlaying)
+                TogglePlayPause();
+        });
+    }
+
+    private void OnNotificationPauseRequested(object? sender, EventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (IsPlaying)
+                TogglePlayPause();
+        });
+    }
+
+    private void OnNotificationNextRequested(object? sender, EventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (NextTrackCommand.CanExecute(null))
+                NextTrack();
+        });
+    }
+
+    private void OnNotificationPreviousRequested(object? sender, EventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (PreviousTrackCommand.CanExecute(null))
+                PreviousTrack();
+        });
+    }
+
+    private void OnNotificationSeekRequested(object? sender, TimeSpan position)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (CurrentTrack is not null)
+                CommitSeek(position);
+        });
+    }
+
+    private void OnNotificationStopRequested(object? sender, EventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(DismissMiniPlayer);
     }
 
     partial void OnPositionChanged(TimeSpan value)
@@ -162,6 +306,7 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
         SetEnginePosition(TimeSpan.Zero);
         SyncState();
         IsPlaying = true;
+        UpdateMediaNotification();
     }
 
     public void SyncQueueState()
@@ -261,7 +406,121 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
     private Task ExpandAsync() => _transitionService.ExpandAsync();
 
     [RelayCommand]
-    private static Task OpenQueueAsync() => Task.CompletedTask;
+    private void DismissMiniPlayer()
+    {
+        _isUserSeeking = false;
+        _player.Stop();
+        _queue.Clear();
+        CurrentTrack = null;
+        IsPlaying = false;
+        SetEnginePosition(TimeSpan.Zero);
+        Duration = TimeSpan.Zero;
+        NotifySkipCommandsCanExecuteChanged();
+        IsQueueOpen = false;
+        _mediaNotificationService?.Clear();
+    }
+
+    [RelayCommand]
+    private void OpenQueue()
+    {
+        RefreshQueueItems();
+        IsQueueOpen = true;
+    }
+
+    [RelayCommand]
+    private void CloseQueue()
+    {
+        IsQueueOpen = false;
+    }
+
+    [RelayCommand]
+    private void PlayQueueItem(QueueTrackItemViewModel? item)
+    {
+        if (item is null)
+            return;
+
+        int index = QueueTracks.IndexOf(item);
+        if (index < 0 || !_queue.JumpTo(index))
+            return;
+
+        _isUserSeeking = false;
+        _lastSeekCommitTimestampMs = Environment.TickCount64;
+        SetEnginePosition(TimeSpan.Zero);
+        _player.Play(item.Track.ContentUri);
+        SyncState();
+        IsPlaying = true;
+        UpdateQueueCurrentMarkers();
+    }
+
+    [RelayCommand]
+    private void RemoveFromQueue(QueueTrackItemViewModel? item)
+    {
+        if (item is null)
+            return;
+
+        HandleTrackRemoved(item.Track);
+        RefreshQueueItems();
+        if (_queue.Tracks.Count == 0)
+        {
+            IsQueueOpen = false;
+        }
+    }
+
+    public void MoveQueueItem(int oldIndex, int newIndex)
+    {
+        if (oldIndex == newIndex ||
+            oldIndex < 0 || oldIndex >= QueueTracks.Count ||
+            newIndex < 0 || newIndex >= QueueTracks.Count)
+        {
+            return;
+        }
+
+        _queue.MoveItem(oldIndex, newIndex);
+        QueueTracks.Move(oldIndex, newIndex);
+        UpdateQueueCurrentMarkers();
+        NotifySkipCommandsCanExecuteChanged();
+    }
+
+    private void RefreshQueueItems()
+    {
+        IReadOnlyList<AudioTrack> tracks = _queue.Tracks;
+        int currentIndex = _queue.CurrentIndex;
+
+        QueueTracks.Clear();
+        TimeSpan totalDuration = TimeSpan.Zero;
+
+        for (int i = 0; i < tracks.Count; i++)
+        {
+            AudioTrack track = tracks[i];
+            totalDuration += track.Duration;
+            ImageSource? cover = _coverExtractor.ExtractCover(track.ContentUri);
+            QueueTracks.Add(new QueueTrackItemViewModel(track, cover, i == currentIndex));
+        }
+
+        QueueTrackCountText = PlaylistFormatting.FormatTrackCount(tracks.Count);
+        QueueTotalDurationText = FormatTotalDuration(totalDuration);
+    }
+
+    private void UpdateQueueCurrentMarkers()
+    {
+        int currentIndex = _queue.CurrentIndex;
+        for (int i = 0; i < QueueTracks.Count; i++)
+        {
+            QueueTracks[i].IsCurrent = i == currentIndex;
+        }
+    }
+
+    private static string FormatTotalDuration(TimeSpan total)
+    {
+        if (total.TotalHours >= 1.0)
+        {
+            int hours = (int)total.TotalHours;
+            return $"{hours}:{total.Minutes:D2}:{total.Seconds:D2}";
+        }
+
+        int totalMinutes = (int)total.TotalMinutes;
+        return $"{totalMinutes}:{total.Seconds:D2}";
+    }
 
     [RelayCommand]
     private void TogglePlayPause()
@@ -344,6 +603,7 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
 
         CurrentTrack.ToggleFavorite();
         SyncFavoriteState();
+        _ = _playlistRepository.SetTrackFavoriteAsync(CurrentTrack, CurrentTrack.IsFavorite);
     }
 
     [RelayCommand]
@@ -352,6 +612,10 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
         _queue.ToggleShuffle();
         IsShuffleEnabled = _queue.IsShuffleEnabled;
         NotifySkipCommandsCanExecuteChanged();
+        if (IsQueueOpen)
+        {
+            RefreshQueueItems();
+        }
     }
 
     [RelayCommand]
@@ -399,6 +663,7 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
         _lastSeekCommitTimestampMs = Environment.TickCount64;
         SetEnginePosition(clamped);
         _player.Seek(clamped);
+        UpdateMediaNotification();
     }
 
     private TimeSpan GetEffectivePosition()
@@ -424,6 +689,19 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
         {
             _isSyncingFromEngine = false;
         }
+    }
+
+    private void OnRepositoryTrackFavoriteChanged(object? sender, TrackFavoriteChangedEventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (CurrentTrack is not null &&
+                string.Equals(CurrentTrack.ContentUri.OriginalString, e.ContentUri.OriginalString, StringComparison.OrdinalIgnoreCase))
+            {
+                CurrentTrack.SetFavorite(e.IsFavorite);
+                SyncFavoriteState();
+            }
+        });
     }
 
     private void OnPlaybackCompleted(object? sender, EventArgs e)
@@ -479,6 +757,19 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
             return;
 
         _isDisposed = true;
+        _colorExtractionCts?.Cancel();
+        _colorExtractionCts?.Dispose();
         _player.PlaybackCompleted -= OnPlaybackCompleted;
+        _playlistRepository.TrackFavoriteChanged -= OnRepositoryTrackFavoriteChanged;
+
+        if (_mediaNotificationService is not null)
+        {
+            _mediaNotificationService.PlayRequested -= OnNotificationPlayRequested;
+            _mediaNotificationService.PauseRequested -= OnNotificationPauseRequested;
+            _mediaNotificationService.NextRequested -= OnNotificationNextRequested;
+            _mediaNotificationService.PreviousRequested -= OnNotificationPreviousRequested;
+            _mediaNotificationService.SeekRequested -= OnNotificationSeekRequested;
+            _mediaNotificationService.StopRequested -= OnNotificationStopRequested;
+        }
     }
 }

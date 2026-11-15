@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:playlists="clr-namespace:MusicPlayer.Features.Playlists"
+             x:Class="MusicPlayer.Features.Playlists.Components.PlaylistTrackOptionsBottomSheet"
+             x:DataType="playlists:PlaylistDetailViewModel"
+             IsVisible="False"
+             InputTransparent="True"
+             ZIndex="20">
+
+    <Grid>
+        <Grid x:Name="BackdropScrim"
+              BackgroundColor="{StaticResource PopupScrimColor}"
+              Opacity="0"
+              HorizontalOptions="Fill"
+              VerticalOptions="Fill">
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding CloseTrackOptionsCommand}" />
+            </Grid.GestureRecognizers>
+        </Grid>
+
+        <Border x:Name="BottomSheetContainer"
+                Style="{StaticResource BottomSheetContainerBorderStyle}"
+                TranslationY="420">
+            <Border.GestureRecognizers>
+                <PanGestureRecognizer PanUpdated="OnSheetPanUpdated" />
+            </Border.GestureRecognizers>
+
+            <VerticalStackLayout Spacing="0">
+                <BoxView Style="{StaticResource BottomSheetDragHandleStyle}" />
+
+                <!-- Шапка с обложкой, названием и исполнителем -->
+                <Grid ColumnDefinitions="48, *"
+                      ColumnSpacing="14"
+                      Padding="20,6,20,14"
+                      InputTransparent="True">
+
+                    <Border Grid.Column="0"
+                            Style="{StaticResource MiniPlayerCoverBorderStyle}"
+                            InputTransparent="True">
+                        <Image Source="{Binding SelectedTrackForOptions.Cover}"
+                               Aspect="AspectFill"
+                               HorizontalOptions="Fill"
+                               VerticalOptions="Fill" />
+                    </Border>
+
+                    <Grid Grid.Column="1"
+                          RowDefinitions="Auto, Auto"
+                          RowSpacing="2"
+                          VerticalOptions="Center"
+                          InputTransparent="True">
+                        <Label Grid.Row="0"
+                               Text="{Binding SelectedTrackForOptions.Track.Title}"
+                               Style="{StaticResource TrackItemTitleLabelStyle}" />
+
+                        <Label Grid.Row="1"
+                               Text="{Binding SelectedTrackForOptions.Subtitle}"
+                               Style="{StaticResource TrackItemSubtitleLabelStyle}" />
+                    </Grid>
+                </Grid>
+
+                <BoxView HeightRequest="1"
+                         Color="{StaticResource PopupDividerColor}"
+                         Margin="0,0,0,6" />
+
+                <VerticalStackLayout Spacing="2"
+                                     Padding="8,0,8,8">
+
+                    <!-- Добавить в очередь -->
+                    <Border x:Name="QueueActionRow"
+                            Style="{StaticResource BottomSheetActionRowBorderStyle}">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnAddToQueueTapped" />
+                        </Border.GestureRecognizers>
+
+                        <Grid ColumnDefinitions="24, *"
+                              ColumnSpacing="20"
+                              VerticalOptions="Center"
+                              InputTransparent="True">
+                            <Image Grid.Column="0"
+                                   Source="popup_queue_add.png"
+                                   Style="{StaticResource PlayerStaticIconImageStyle}"
+                                   InputTransparent="True" />
+
+                            <Label Grid.Column="1"
+                                   Text="Добавить в очередь"
+                                   Style="{StaticResource TrackPopupActionLabelStyle}"
+                                   InputTransparent="True" />
+                        </Grid>
+                    </Border>
+
+                    <BoxView HeightRequest="1"
+                             Color="{StaticResource PopupDividerColor}"
+                             Margin="12,4,12,4" />
+
+                    <!-- Убрать из плейлиста -->
+                    <Border x:Name="RemoveActionRow"
+                            Style="{StaticResource BottomSheetActionRowBorderStyle}">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnRemoveFromPlaylistTapped" />
+                        </Border.GestureRecognizers>
+
+                        <Grid ColumnDefinitions="24, *"
+                              ColumnSpacing="20"
+                              VerticalOptions="Center"
+                              InputTransparent="True">
+                            <Image Grid.Column="0"
+                                   Source="popup_delete.png"
+                                   Style="{StaticResource PlayerStaticIconImageStyle}"
+                                   InputTransparent="True" />
+
+                            <Label Grid.Column="1"
+                                   Text="Убрать из плейлиста"
+                                   Style="{StaticResource TrackPopupDestructiveLabelStyle}"
+                                   InputTransparent="True" />
+                        </Grid>
+                    </Border>
+
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+</ContentView>

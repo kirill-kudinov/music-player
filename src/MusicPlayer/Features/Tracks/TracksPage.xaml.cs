@@ -36,9 +36,16 @@ public partial class TracksPage : ContentPage
 
         _tracksViewModel.LoadTracks();
     }
-
+    
+    
     protected override bool OnBackButtonPressed()
     {
+        if (_tracksViewModel.IsSelectPlaylistSheetVisible)
+        {
+            _tracksViewModel.CloseSelectPlaylistSheetCommand.Execute(null);
+            return true;
+        }
+
         if (_tracksViewModel.IsTrackOptionsPopupVisible)
         {
             _tracksViewModel.CloseTrackOptionsCommand.Execute(null);

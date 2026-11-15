@@ -5,29 +5,47 @@
              xmlns:importer="clr-namespace:MusicPlayer.Features.Importer"
              x:Class="MusicPlayer.Features.Importer.ImportPage"
              x:DataType="importer:ImportViewModel"
-             BackgroundColor="{StaticResource BgCanvas }">
-    <ContentPage.Content>
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="{StaticResource BgCanvas}">
 
-        <Grid HorizontalOptions="Center"
-              VerticalOptions="Center">
-            <VerticalStackLayout
-                Padding="24"
-                Spacing="16"
-                VerticalOptions="End">
+    <Grid Padding="20,48,20,24"
+          VerticalOptions="Center">
 
-                <Border StrokeShape="RoundRectangle 24"
-                        Stroke="{StaticResource Gray400}"
-                        StrokeThickness="1"
-                        BackgroundColor="#181920"
-                        Padding="18">
-                    <Border.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding ImportTrackCommand}" />
-                    </Border.GestureRecognizers>
+        <VerticalStackLayout Spacing="18"
+                             VerticalOptions="Center">
 
-                    <Grid ColumnDefinitions="Auto, *"
+            <!-- Заголовок и подзаголовок -->
+            <VerticalStackLayout Spacing="6"
+                                 Margin="4,0,4,6">
+                <Label Text="Импорт аудио"
+                       FontFamily="Roboto-Bold"
+                       FontSize="26"
+                       TextColor="{StaticResource TextPrimary}" />
+
+                <Label Text="Сканирование медиатеки устройства через MediaStore или добавление файлов вручную"
+                       FontFamily="Roboto-Regular"
+                       FontSize="14"
+                       LineHeight="1.25"
+                       TextColor="{StaticResource TextMuted}" />
+            </VerticalStackLayout>
+
+            <!-- 1. Карточка «Сканировать медиатеку» (MediaStore, без копирования файлов) -->
+            <Border StrokeShape="RoundRectangle 24"
+                    Stroke="{StaticResource PopupBorderColor}"
+                    StrokeThickness="1"
+                    BackgroundColor="#181920"
+                    Padding="18">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding ScanMediaStoreCommand}" />
+                </Border.GestureRecognizers>
+
+                <VerticalStackLayout Spacing="12"
+                                     InputTransparent="True"
+                                     CascadeInputTransparent="True">
+                    <Grid ColumnDefinitions="56, *"
                           ColumnSpacing="16"
                           VerticalOptions="Center">
- 
+
                         <Border Grid.Column="0"
                                 StrokeShape="RoundRectangle 16"
                                 BackgroundColor="#262833"
@@ -36,10 +54,10 @@
                                 HeightRequest="56"
                                 HorizontalOptions="Center"
                                 VerticalOptions="Center">
-
-                            <Image Source="tab_tracks_inactive.png"
+                            <Image Source="import_folder.png"
                                    WidthRequest="24"
                                    HeightRequest="24"
+                                   Aspect="AspectFit"
                                    HorizontalOptions="Center"
                                    VerticalOptions="Center" />
                         </Border>
@@ -47,16 +65,98 @@
                         <VerticalStackLayout Grid.Column="1"
                                              Spacing="4"
                                              VerticalOptions="Center">
-                            <Label Text="Выбрать аудиофайл"
+                            <Label Text="Сканировать медиатеку"
+                                   FontFamily="Roboto-Bold"
                                    FontSize="16"
-                                   FontAttributes="Bold"
-                                   TextColor="White" />
+                                   TextColor="{StaticResource TextPrimary}" />
+
+                            <Label Text="Найти всю музыку на устройстве без дублирования файлов"
+                                   FontFamily="Roboto-Regular"
+                                   FontSize="13"
+                                   LineHeight="1.2"
+                                   TextColor="{StaticResource TextMuted}" />
                         </VerticalStackLayout>
                     </Grid>
-                </Border>
 
-            </VerticalStackLayout>
+                    <VerticalStackLayout Spacing="6"
+                                         IsVisible="{Binding IsScanningMediaStore}">
+                        <ProgressBar Progress="{Binding ScanProgress}"
+                                     ProgressColor="{StaticResource White}"
+                                     BackgroundColor="#262833"
+                                     HeightRequest="4" />
+                        <Label Text="{Binding ScanStatusText}"
+                               FontFamily="Roboto-Regular"
+                               FontSize="12"
+                               TextColor="{StaticResource TextSecondary}"
+                               HorizontalTextAlignment="End" />
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
 
-        </Grid>
-    </ContentPage.Content>
+            <!-- 2. Карточка «Выбрать аудиофайлы» -->
+            <Border StrokeShape="RoundRectangle 24"
+                    Stroke="{StaticResource PopupBorderColor}"
+                    StrokeThickness="1"
+                    BackgroundColor="#181920"
+                    Padding="18">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding ImportTracksCommand}" />
+                </Border.GestureRecognizers>
+
+                <VerticalStackLayout Spacing="12"
+                                     InputTransparent="True"
+                                     CascadeInputTransparent="True">
+                    <Grid ColumnDefinitions="56, *"
+                          ColumnSpacing="16"
+                          VerticalOptions="Center">
+
+                        <Border Grid.Column="0"
+                                StrokeShape="RoundRectangle 16"
+                                BackgroundColor="#262833"
+                                StrokeThickness="0"
+                                WidthRequest="56"
+                                HeightRequest="56"
+                                HorizontalOptions="Center"
+                                VerticalOptions="Center">
+                            <Image Source="tab_tracks_inactive.png"
+                                   WidthRequest="24"
+                                   HeightRequest="24"
+                                   Aspect="AspectFit"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center" />
+                        </Border>
+
+                        <VerticalStackLayout Grid.Column="1"
+                                             Spacing="4"
+                                             VerticalOptions="Center">
+                            <Label Text="Выбрать аудиофайлы"
+                                   FontFamily="Roboto-Bold"
+                                   FontSize="16"
+                                   TextColor="{StaticResource TextPrimary}" />
+
+                            <Label Text="Один или несколько треков (MP3, FLAC, WAV, M4A, AAC, OPUS)"
+                                   FontFamily="Roboto-Regular"
+                                   FontSize="13"
+                                   LineHeight="1.2"
+                                   TextColor="{StaticResource TextMuted}" />
+                        </VerticalStackLayout>
+                    </Grid>
+
+                    <VerticalStackLayout Spacing="6"
+                                         IsVisible="{Binding IsImportingFiles}">
+                        <ProgressBar Progress="{Binding FilesImportProgress}"
+                                     ProgressColor="{StaticResource White}"
+                                     BackgroundColor="#262833"
+                                     HeightRequest="4" />
+                        <Label Text="{Binding FilesStatusText}"
+                               FontFamily="Roboto-Regular"
+                               FontSize="12"
+                               TextColor="{StaticResource TextSecondary}"
+                               HorizontalTextAlignment="End" />
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+        </VerticalStackLayout>
+    </Grid>
 </ContentPage>

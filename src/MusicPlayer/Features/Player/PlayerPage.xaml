@@ -26,36 +26,46 @@
         </ResourceDictionary>
     </ContentPage.Resources>
 
-    <Grid x:Name="PlayerRootGrid"
-          RowDefinitions="Auto, *, Auto, Auto"
-          Padding="{StaticResource PlayerScreenPadding}"
-          Background="{StaticResource PlayerBackgroundGradientBrush}">
+    <Grid>
+        <Grid x:Name="PlayerRootGrid"
+              RowDefinitions="Auto, *, Auto, Auto"
+              Padding="{StaticResource PlayerScreenPadding}">
+            <Grid.Background>
+                <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+                    <GradientStop Color="{Binding DominantGradientColor}" Offset="0.0" />
+                    <GradientStop Color="{StaticResource BgGradientEnd}" Offset="0.72" />
+                </LinearGradientBrush>
+            </Grid.Background>
 
-        <!-- 1. Верхняя панель -->
-        <components:PlayerHeaderView x:Name="HeaderSection"
-                                     Grid.Row="0">
-            <components:PlayerHeaderView.GestureRecognizers>
-                <PanGestureRecognizer PanUpdated="OnCollapsePanUpdated" />
-            </components:PlayerHeaderView.GestureRecognizers>
-        </components:PlayerHeaderView>
+            <!-- 1. Верхняя панель -->
+            <components:PlayerHeaderView x:Name="HeaderSection"
+                                         Grid.Row="0">
+                <components:PlayerHeaderView.GestureRecognizers>
+                    <PanGestureRecognizer PanUpdated="OnCollapsePanUpdated" />
+                </components:PlayerHeaderView.GestureRecognizers>
+            </components:PlayerHeaderView>
 
-        <!-- 2. Обложка трека -->
-        <components:TrackCoverView x:Name="CoverSection"
-                                   Grid.Row="1"
-                                   VerticalOptions="Center">
-            <components:TrackCoverView.GestureRecognizers>
-                <PanGestureRecognizer PanUpdated="OnCollapsePanUpdated" />
-            </components:TrackCoverView.GestureRecognizers>
-        </components:TrackCoverView>
+            <!-- 2. Обложка трека -->
+            <components:TrackCoverView x:Name="CoverSection"
+                                       Grid.Row="1"
+                                       VerticalOptions="Center">
+                <components:TrackCoverView.GestureRecognizers>
+                    <PanGestureRecognizer PanUpdated="OnCollapsePanUpdated" />
+                </components:TrackCoverView.GestureRecognizers>
+            </components:TrackCoverView>
 
-        <!-- 3. Информация о треке и сердечко -->
-        <components:TrackInfoView x:Name="TrackInfoSection"
-                                  Grid.Row="2"
-                                  Margin="{StaticResource TrackInfoBottomMargin}" />
+            <!-- 3. Информация о треке и сердечко -->
+            <components:TrackInfoView x:Name="TrackInfoSection"
+                                      Grid.Row="2"
+                                      Margin="{StaticResource TrackInfoBottomMargin}" />
 
-        <!-- 4. Панель управления и слайдер -->
-        <components:PlayerControlsView x:Name="ControlsSection"
-                                       Grid.Row="3" />
+            <!-- 4. Панель управления и слайдер -->
+            <components:PlayerControlsView x:Name="ControlsSection"
+                                           Grid.Row="3" />
 
+        </Grid>
+
+        <!-- 5. Очередь воспроизведения -->
+        <components:PlayerQueueSheet IsOpen="{Binding IsQueueOpen}" />
     </Grid>
 </ContentPage>

@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:playlists="clr-namespace:MusicPlayer.Features.Playlists"
+             x:Class="MusicPlayer.Features.Playlists.Components.AddTracksToPlaylistSheet"
+             x:DataType="playlists:PlaylistDetailViewModel"
+             IsVisible="False"
+             InputTransparent="True"
+             ZIndex="30">
+
+    <Grid>
+        <Grid x:Name="BackdropScrim"
+              BackgroundColor="{StaticResource PopupScrimColor}"
+              Opacity="0"
+              HorizontalOptions="Fill"
+              VerticalOptions="Fill">
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding CloseAddTracksSheetCommand}" />
+            </Grid.GestureRecognizers>
+        </Grid>
+
+        <Border x:Name="ModalCard"
+                Style="{StaticResource PlaylistModalCardStyle}"
+                Opacity="0"
+                Scale="0.95"
+                HorizontalOptions="Fill"
+                VerticalOptions="Center"
+                Margin="16,32">
+
+            <Grid RowDefinitions="Auto, *, Auto"
+                  RowSpacing="14"
+                  MaximumHeightRequest="520">
+
+                <Label Grid.Row="0"
+                       Text="Добавить треки"
+                       Style="{StaticResource PlaylistModalTitleLabelStyle}" />
+
+                <Grid Grid.Row="1" HeightRequest="320">
+                    <CollectionView IsVisible="{Binding HasAvailableTracksToAdd}"
+                                    ItemsSource="{Binding AvailableTracksToAdd}"
+                                    SelectionMode="None">
+                        <CollectionView.ItemsLayout>
+                            <LinearItemsLayout Orientation="Vertical"
+                                               ItemSpacing="8" />
+                        </CollectionView.ItemsLayout>
+
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="playlists:SelectableTrackItemViewModel">
+                                <Border Style="{StaticResource SelectableTrackCardBorderStyle}"
+                                        Opacity="{Binding ItemOpacity}">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type playlists:PlaylistDetailViewModel}}, Path=ToggleTrackSelectionCommand, x:DataType=playlists:PlaylistDetailViewModel}"
+                                            CommandParameter="{Binding .}" />
+                                    </Border.GestureRecognizers>
+
+                                    <Grid ColumnDefinitions="44, *, Auto, Auto"
+                                          ColumnSpacing="10"
+                                          VerticalOptions="Center"
+                                          InputTransparent="True"
+                                          CascadeInputTransparent="True">
+
+                                        <Border Grid.Column="0"
+                                                WidthRequest="44"
+                                                HeightRequest="44"
+                                                Style="{StaticResource MiniPlayerCoverBorderStyle}"
+                                                InputTransparent="True">
+                                            <Image Source="{Binding Cover}"
+                                                   Aspect="AspectFill"
+                                                   HorizontalOptions="Fill"
+                                                   VerticalOptions="Fill" />
+                                        </Border>
+
+                                        <Grid Grid.Column="1"
+                                              RowDefinitions="Auto, Auto"
+                                              RowSpacing="2"
+                                              VerticalOptions="Center"
+                                              InputTransparent="True">
+                                            <Label Grid.Row="0"
+                                                   Text="{Binding Track.Title}"
+                                                   Style="{StaticResource TrackItemTitleLabelStyle}" />
+
+                                            <Label Grid.Row="1"
+                                                   Text="{Binding Subtitle}"
+                                                   Style="{StaticResource TrackItemSubtitleLabelStyle}" />
+                                        </Grid>
+
+                                        <Label Grid.Column="2"
+                                               IsVisible="{Binding IsAlreadyInPlaylist}"
+                                               Text="Добавлен"
+                                               FontFamily="Roboto-Regular"
+                                               FontSize="11"
+                                               TextColor="{StaticResource TextMuted}"
+                                               VerticalOptions="Center"
+                                               InputTransparent="True" />
+
+                                        <CheckBox Grid.Column="3"
+                                                  IsChecked="{Binding IsSelected, Mode=OneWay}"
+                                                  IsEnabled="{Binding CanToggleSelection}"
+                                                  Color="{StaticResource White}"
+                                                  VerticalOptions="Center"
+                                                  InputTransparent="True" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+
+                    <Label IsVisible="{Binding HasNoAvailableTracksToAdd}"
+                           Text="В библиотеке пока нет треков"
+                           Style="{StaticResource TrackItemSubtitleLabelStyle}"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center"
+                           HorizontalTextAlignment="Center" />
+                </Grid>
+
+                <Grid Grid.Row="2"
+                      ColumnDefinitions="*, *"
+                      ColumnSpacing="10">
+                    <Button Grid.Column="0"
+                            Text="Отмена"
+                            Command="{Binding CloseAddTracksSheetCommand}"
+                            Style="{StaticResource PlaylistModalCancelButtonStyle}" />
+
+                    <Button Grid.Column="1"
+                            Text="Добавить"
+                            Command="{Binding ConfirmAddSelectedTracksCommand}"
+                            IsEnabled="{Binding CanConfirmAddTracks}"
+                            Style="{StaticResource PlaylistModalSaveButtonStyle}" />
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</ContentView>

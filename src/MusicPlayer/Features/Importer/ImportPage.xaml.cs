@@ -4,10 +4,9 @@ namespace MusicPlayer.Features.Importer;
 
 public partial class ImportPage : ContentPage
 {
-    public ImportPage(Importer.ImportViewModel importViewModel)
+    public ImportPage(ImportViewModel importViewModel)
     {
         InitializeComponent();
-
         BindingContext = importViewModel;
     }
 }

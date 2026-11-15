@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:playlists="clr-namespace:MusicPlayer.Features.Playlists"
+             xmlns:playlistComponents="clr-namespace:MusicPlayer.Features.Playlists.Components"
+             xmlns:components="clr-namespace:MusicPlayer.Features.Player.Components"
+             x:Class="MusicPlayer.Features.Playlists.PlaylistsPage"
+             x:DataType="playlists:PlaylistsViewModel"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="{StaticResource BgCanvas}">
+
+    <Grid>
+        <!-- Основной контент экрана плейлистов -->
+        <Grid RowDefinitions="Auto, *, Auto"
+              Padding="16,16,16,0"
+              RowSpacing="16">
+
+            <!-- 1. Шапка: заголовок, подзаголовок и белая кнопка «Создать» -->
+            <Grid Grid.Row="0"
+                  ColumnDefinitions="*, Auto"
+                  ColumnSpacing="12"
+                  VerticalOptions="Center">
+
+                <VerticalStackLayout Grid.Column="0"
+                                     Spacing="4"
+                                     VerticalOptions="Center">
+                    <Label Text="Плейлисты"
+                           Style="{StaticResource PlaylistsHeaderTitleStyle}" />
+                    
+                </VerticalStackLayout>
+
+                <Button Grid.Column="1"
+                        Text="Создать"
+                        Command="{Binding OpenCreateModalCommand}"
+                        Style="{StaticResource PlaylistsCreateButtonStyle}"
+                        VerticalOptions="Center" />
+            </Grid>
+
+            <!-- 2. Сетка карточек плейлистов (2 колонки) -->
+            <CollectionView Grid.Row="1"
+                            ItemsSource="{Binding Playlists}"
+                            SelectionMode="None">
+                <CollectionView.ItemsLayout>
+                    <GridItemsLayout Orientation="Vertical"
+                                     Span="2"
+                                     HorizontalItemSpacing="14"
+                                     VerticalItemSpacing="16" />
+                </CollectionView.ItemsLayout>
+
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="playlists:PlaylistItemViewModel">
+                        <VerticalStackLayout Spacing="8">
+                            <VerticalStackLayout.GestureRecognizers>
+                                <TapGestureRecognizer
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type playlists:PlaylistsViewModel}}, Path=OpenPlaylistCommand, x:DataType=playlists:PlaylistsViewModel}"
+                                    CommandParameter="{Binding .}" />
+                            </VerticalStackLayout.GestureRecognizers>
+
+                            <!-- Квадратная скруглённая обложка -->
+                            <Grid HeightRequest="172">
+                                <Border Style="{StaticResource PlaylistCardCoverBorderStyle}"
+                                        InputTransparent="True">
+                                    <Image Source="{Binding CoverSource}"
+                                           Aspect="AspectFill"
+                                           HorizontalOptions="Fill"
+                                           VerticalOptions="Fill" />
+                                </Border>
+
+                                <!-- Бейдж «♥ Стандартный» в левом верхнем углу для системного плейлиста -->
+                                <Border IsVisible="{Binding IsSystem}"
+                                        Style="{StaticResource PlaylistSystemBadgeStyle}"
+                                        HorizontalOptions="Start"
+                                        VerticalOptions="Start"
+                                        Margin="8"
+                                        InputTransparent="True">
+                                    <Label Text="Стандартный"
+                                           Style="{StaticResource PlaylistSystemBadgeLabelStyle}"
+                                           InputTransparent="True" />
+                                </Border>
+
+                                <!-- Круглая полупрозрачная кнопка редактирования (карандаш) для пользовательских плейлистов -->
+                                <Border IsVisible="{Binding CanEdit}"
+                                        IsEnabled="{Binding CanEdit}"
+                                        Style="{StaticResource PlaylistEditPencilButtonStyle}"
+                                        HorizontalOptions="End"
+                                        VerticalOptions="Start"
+                                        Margin="8">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type playlists:PlaylistsViewModel}}, Path=OpenEditModalCommand, x:DataType=playlists:PlaylistsViewModel}"
+                                            CommandParameter="{Binding .}" />
+                                    </Border.GestureRecognizers>
+
+                                    <Image Source="playlist_edit_pencil.png"
+                                           WidthRequest="16"
+                                           HeightRequest="16"
+                                           Aspect="AspectFit"
+                                           HorizontalOptions="Center"
+                                           VerticalOptions="Center"
+                                           InputTransparent="True" />
+                                </Border>
+                            </Grid>
+
+                            <!-- Название и счётчик треков -->
+                            <VerticalStackLayout Spacing="2"
+                                                 InputTransparent="True">
+                                <Label Text="{Binding Title}"
+                                       Style="{StaticResource TrackItemTitleLabelStyle}" />
+
+                                <Label Text="{Binding TrackCountText}"
+                                       Style="{StaticResource TrackItemSubtitleLabelStyle}" />
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <!-- 3. Плавающий мини-плеер над нижней навигацией -->
+            <components:MiniPlayerView x:Name="MiniPlayer"
+                                       Grid.Row="2"
+                                       BindingContext="{Binding Player}"
+                                       Margin="0,0,0,12"
+                                       VerticalOptions="End" />
+        </Grid>
+
+        <!-- 4. Модальное окно создания и редактирования плейлиста -->
+        <playlistComponents:PlaylistEditorModalView IsOpen="{Binding IsEditorModalVisible}" />
+    </Grid>
+</ContentPage>
