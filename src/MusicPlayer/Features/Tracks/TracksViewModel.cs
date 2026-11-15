@@ -249,6 +249,7 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
         Player.HandleTrackRemoved(target.Track);
         _trackStorage.RemoveTrackFromPlayer(target.Track.ContentUri);
         await _playlistRepository.RemoveTrackFromEverywhereAsync(target.Track.ContentUri);
+
     }
 
     [RelayCommand]
@@ -278,6 +279,7 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
             return;
 
         Task<Result<IReadOnlyList<Playlist>>> playlistsTask = _playlistRepository.GetAllPlaylistsAsync();
+        // Даём нижней шторке опций время плавно уехать, чтобы не накладывать две анимации.
         await Task.WhenAll(playlistsTask, Task.Delay(120));
 
         Result<IReadOnlyList<Playlist>> result = await playlistsTask;

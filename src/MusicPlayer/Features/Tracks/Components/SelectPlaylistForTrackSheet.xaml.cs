@@ -6,8 +6,6 @@ namespace MusicPlayer.Features.Tracks.Components;
 
 public partial class SelectPlaylistForTrackSheet : ContentView
 {
-    private const string ModalAnimationName = "SelectPlaylistForTrackSheetTransition";
-    private const uint FrameRateMs = 8;
     private const uint OpenDurationMs = 220;
     private const uint CloseDurationMs = 160;
     private const double HiddenTranslationY = 28.0;
@@ -43,7 +41,8 @@ public partial class SelectPlaylistForTrackSheet : ContentView
     private void AnimateModalState(bool isOpen)
     {
         int generation = ++_animationGeneration;
-        this.AbortAnimation(ModalAnimationName);
+        NativeSheetAnimator.Cancel(ModalCard);
+        NativeSheetAnimator.Cancel(BackdropScrim);
 
         if (isOpen)
         {
@@ -54,34 +53,25 @@ public partial class SelectPlaylistForTrackSheet : ContentView
             IsVisible = true;
             InputTransparent = false;
 
-            // Откладываем старт анимации на один цикл рендеринга, чтобы Measure/Arrange
-            // CollectionView и карточки завершились до первого кадра анимации.
-            Dispatcher.Dispatch(() =>
+            NativeSheetAnimator.PostAfterLayout(ModalCard, () =>
             {
                 if (!IsOpen || generation != _animationGeneration)
                     return;
 
-                AndroidRenderLayerHelper.SetHardwareLayer(ModalCard, true);
-                AndroidRenderLayerHelper.SetHardwareLayer(BackdropScrim, true);
+                NativeSheetAnimator.AnimateSlideFade(
+                    BackdropScrim,
+                    0.0, 0.0,
+                    0.0, 1.0,
+                    OpenDurationMs,
+                    isOpening: true,
+                    useHardwareLayer: false);
 
-                var openAnimation = new Animation
-                {
-                    { 0.0, 1.0, new Animation(v => BackdropScrim.Opacity = v, 0.0, 1.0, Easing.CubicOut) },
-                    { 0.0, 0.85, new Animation(v => ModalCard.Opacity = v, 0.0, 1.0, Easing.CubicOut) },
-                    { 0.0, 1.0, new Animation(v => ModalCard.TranslationY = v, HiddenTranslationY, 0.0, Easing.CubicOut) }
-                };
-
-                openAnimation.Commit(
-                    owner: this,
-                    name: ModalAnimationName,
-                    rate: FrameRateMs,
-                    length: OpenDurationMs,
-                    easing: Easing.Linear,
-                    finished: (_, _) =>
-                    {
-                        AndroidRenderLayerHelper.SetHardwareLayer(ModalCard, false);
-                        AndroidRenderLayerHelper.SetHardwareLayer(BackdropScrim, false);
-                    });
+                NativeSheetAnimator.AnimateSlideFade(
+                    ModalCard,
+                    HiddenTranslationY, 0.0,
+                    0.0, 1.0,
+                    OpenDurationMs,
+                    isOpening: true);
             });
         }
         else
@@ -92,27 +82,22 @@ public partial class SelectPlaylistForTrackSheet : ContentView
             double startCardOpacity = ModalCard.Opacity;
             double startTranslationY = ModalCard.TranslationY;
 
-            AndroidRenderLayerHelper.SetHardwareLayer(ModalCard, true);
-            AndroidRenderLayerHelper.SetHardwareLayer(BackdropScrim, true);
+            NativeSheetAnimator.AnimateSlideFade(
+                BackdropScrim,
+                0.0, 0.0,
+                startScrimOpacity, 0.0,
+                CloseDurationMs,
+                isOpening: false,
+                useHardwareLayer: false);
 
-            var closeAnimation = new Animation
-            {
-                { 0.0, 1.0, new Animation(v => BackdropScrim.Opacity = v, startScrimOpacity, 0.0, Easing.CubicIn) },
-                { 0.0, 1.0, new Animation(v => ModalCard.Opacity = v, startCardOpacity, 0.0, Easing.CubicIn) },
-                { 0.0, 1.0, new Animation(v => ModalCard.TranslationY = v, startTranslationY, HiddenTranslationY, Easing.CubicIn) }
-            };
-
-            closeAnimation.Commit(
-                owner: this,
-                name: ModalAnimationName,
-                rate: FrameRateMs,
-                length: CloseDurationMs,
-                easing: Easing.Linear,
-                finished: (_, _) =>
+            NativeSheetAnimator.AnimateSlideFade(
+                ModalCard,
+                startTranslationY, HiddenTranslationY,
+                startCardOpacity, 0.0,
+                CloseDurationMs,
+                isOpening: false,
+                onCompleted: () =>
                 {
-                    AndroidRenderLayerHelper.SetHardwareLayer(ModalCard, false);
-                    AndroidRenderLayerHelper.SetHardwareLayer(BackdropScrim, false);
-
                     if (!IsOpen && generation == _animationGeneration)
                     {
                         IsVisible = false;

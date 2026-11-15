@@ -22,7 +22,7 @@
                        FontSize="26"
                        TextColor="{StaticResource TextPrimary}" />
 
-                <Label Text="Сканирование медиатеки устройства через MediaStore или добавление файлов вручную"
+                <Label Text="Сканирование медиатеки устройства или добавление файлов вручную"
                        FontFamily="Roboto-Regular"
                        FontSize="14"
                        LineHeight="1.25"

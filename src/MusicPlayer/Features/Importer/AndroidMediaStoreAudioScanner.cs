@@ -265,7 +265,7 @@ public sealed class AndroidMediaStoreAudioScanner(TrackStorage trackStorage) : I
     private sealed class ReadAudioPermission : Permissions.BasePlatformPermission
     {
         public override (string androidPermission, bool isRuntime)[] RequiredPermissions =>
-            Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu
+            OperatingSystem.IsAndroidVersionAtLeast(33)
                 ? [(Manifest.Permission.ReadMediaAudio, true)]
                 : [(Manifest.Permission.ReadExternalStorage, true)];
     }
