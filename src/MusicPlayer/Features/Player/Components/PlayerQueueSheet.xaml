@@ -37,13 +37,13 @@
                                  Spacing="2"
                                  HorizontalOptions="End"
                                  VerticalOptions="Center">
-                <Label Text="{Binding QueueTrackCountText}"
+                <Label Text="{Binding Queue.TrackCountText}"
                        FontFamily="Roboto-Regular"
                        FontSize="12"
                        TextColor="{StaticResource TextSecondary}"
                        HorizontalTextAlignment="End" />
 
-                <Label Text="{Binding QueueTotalDurationText}"
+                <Label Text="{Binding Queue.TotalDurationText}"
                        FontFamily="Roboto-Regular"
                        FontSize="12"
                        TextColor="{StaticResource TextMuted}"
@@ -60,7 +60,7 @@
         <!-- 2. Список треков в очереди с перетаскиванием за 2 полоски (=) -->
         <CollectionView Grid.Row="2"
                         x:Name="QueueCollectionView"
-                        ItemsSource="{Binding QueueTracks}"
+                        ItemsSource="{Binding Queue.Tracks}"
                         SelectionMode="None">
             <CollectionView.ItemsLayout>
                 <LinearItemsLayout Orientation="Vertical"
@@ -101,7 +101,7 @@
                                   VerticalOptions="Center">
                                 <Grid.GestureRecognizers>
                                     <TapGestureRecognizer
-                                        Command="{Binding Source={RelativeSource AncestorType={x:Type player:PlayerViewModel}}, Path=PlayQueueItemCommand, x:DataType=player:PlayerViewModel}"
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type player:PlayerViewModel}}, Path=Queue.PlayItemCommand, x:DataType=player:PlayerViewModel}"
                                         CommandParameter="{Binding .}" />
                                 </Grid.GestureRecognizers>
 
@@ -209,7 +209,7 @@
                     VerticalOptions="Center">
                 <Border.Behaviors>
                     <toolkit:TouchBehavior BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
-                                           Command="{Binding CloseQueueCommand}"
+                                           Command="{Binding Queue.CloseCommand}"
                                            DefaultAnimationDuration="150"
                                            DefaultAnimationEasing="{x:Static Easing.CubicInOut}"
                                            DefaultBackgroundColor="Transparent"

@@ -41,7 +41,7 @@
                 Style="{StaticResource PlayerIconButtonStyle}">
             <Border.Behaviors>
                 <toolkit:TouchBehavior BindingContext="{Binding Path=BindingContext, Source={x:Reference RootView}, x:DataType=ContentView}"
-                                       Command="{Binding OpenQueueCommand}"
+                                       Command="{Binding Queue.OpenCommand}"
                                        DefaultAnimationDuration="150"
                                        DefaultAnimationEasing="{x:Static Easing.CubicInOut}"
                                        DefaultBackgroundColor="Transparent"

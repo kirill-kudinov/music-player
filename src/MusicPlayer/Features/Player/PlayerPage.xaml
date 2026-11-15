@@ -66,6 +66,6 @@
         </Grid>
 
         <!-- 5. Очередь воспроизведения -->
-        <components:PlayerQueueSheet IsOpen="{Binding IsQueueOpen}" />
+        <components:PlayerQueueSheet IsOpen="{Binding Queue.IsOpen}" />
     </Grid>
 </ContentPage>

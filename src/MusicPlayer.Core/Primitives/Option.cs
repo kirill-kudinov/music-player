@@ -50,7 +50,7 @@ public readonly struct Option<T> : IEquatable<Option<T>>
     public override bool Equals(object? obj) => obj is Option<T> other && Equals(other);
 
     public override int GetHashCode() =>
-        HasValue ? EqualityComparer<T?>.Default.GetHashCode(_value) : 0;
+        HasValue ? EqualityComparer<T>.Default.GetHashCode(_value!) : 0;
 
     public static bool operator ==(Option<T> left, Option<T> right) => left.Equals(right);
 

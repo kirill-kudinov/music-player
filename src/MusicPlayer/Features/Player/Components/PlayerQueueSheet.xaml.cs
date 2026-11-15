@@ -162,16 +162,16 @@ public partial class PlayerQueueSheet : ContentView
                 if (_draggedRow is null || _draggedItem is null)
                     return;
 
-                int currentIndex = vm.QueueTracks.IndexOf(_draggedItem);
+                int currentIndex = vm.Queue.Tracks.IndexOf(_draggedItem);
                 if (currentIndex < 0)
                     return;
 
                 double deltaY = e.TotalY - _accumulatedSwapOffset;
 
-                while (deltaY >= SwapThreshold && currentIndex < vm.QueueTracks.Count - 1)
+                while (deltaY >= SwapThreshold && currentIndex < vm.Queue.Tracks.Count - 1)
                 {
                     int targetIndex = currentIndex + 1;
-                    vm.MoveQueueItem(currentIndex, targetIndex);
+                    vm.Queue.MoveItem(currentIndex, targetIndex);
                     currentIndex = targetIndex;
                     _accumulatedSwapOffset += RowStepHeight;
                     deltaY = e.TotalY - _accumulatedSwapOffset;
@@ -180,7 +180,7 @@ public partial class PlayerQueueSheet : ContentView
                 while (deltaY <= -SwapThreshold && currentIndex > 0)
                 {
                     int targetIndex = currentIndex - 1;
-                    vm.MoveQueueItem(currentIndex, targetIndex);
+                    vm.Queue.MoveItem(currentIndex, targetIndex);
                     currentIndex = targetIndex;
                     _accumulatedSwapOffset -= RowStepHeight;
                     deltaY = e.TotalY - _accumulatedSwapOffset;
@@ -243,9 +243,9 @@ public partial class PlayerQueueSheet : ContentView
                     row.TranslationX = 0.0;
                     row.Opacity = 1.0;
 
-                    if (vm.RemoveFromQueueCommand.CanExecute(item))
+                    if (vm.Queue.RemoveItemCommand.CanExecute(item))
                     {
-                        vm.RemoveFromQueueCommand.Execute(item);
+                        vm.Queue.RemoveItemCommand.Execute(item);
                     }
                 }
                 else
