@@ -14,6 +14,7 @@ public partial class PlayerQueueSheet : ContentView
     private const double HiddenTranslationY = 56.0;
     private const double RowStepHeight = 70.0;
     private const double SwapThreshold = 35.0;
+    private const double SwipeRemoveThreshold = -85.0;
 
     private int _animationGeneration;
     private Border? _draggedRow;
@@ -205,28 +206,57 @@ public partial class PlayerQueueSheet : ContentView
         }
     }
 
-    private async void OnQueueItemMoreTapped(object? sender, TappedEventArgs e)
+    private async void OnRowSwipePanUpdated(object? sender, PanUpdatedEventArgs e)
     {
         if (BindingContext is not PlayerViewModel vm ||
-            e.Parameter is not QueueTrackItemViewModel item ||
-            Shell.Current?.CurrentPage is null)
+            sender is not Border row ||
+            row.BindingContext is not QueueTrackItemViewModel item)
         {
             return;
         }
 
-        string? choice = await Shell.Current.CurrentPage.DisplayActionSheetAsync(
-            item.Track.Title,
-            "Отмена",
-            "Убрать из очереди",
-            "Воспроизвести");
+        switch (e.StatusType)
+        {
+            case GestureStatus.Started:
+                row.CancelAnimations();
+                AndroidRenderLayerHelper.SetHardwareLayer(row, true);
+                break;
 
-        if (choice == "Убрать из очереди" && vm.RemoveFromQueueCommand.CanExecute(item))
-        {
-            vm.RemoveFromQueueCommand.Execute(item);
-        }
-        else if (choice == "Воспроизвести" && vm.PlayQueueItemCommand.CanExecute(item))
-        {
-            vm.PlayQueueItemCommand.Execute(item);
+            case GestureStatus.Running:
+                if (e.TotalX >= 0 || Math.Abs(e.TotalX) < Math.Abs(e.TotalY))
+                    return;
+
+                double offsetX = Math.Max(-260.0, e.TotalX);
+                row.TranslationX = offsetX;
+                row.Opacity = Math.Clamp(1.0 + (offsetX / 220.0), 0.2, 1.0);
+                break;
+
+            case GestureStatus.Completed:
+            case GestureStatus.Canceled:
+                if (row.TranslationX <= SwipeRemoveThreshold)
+                {
+                    await System.Threading.Tasks.Task.WhenAll(
+                        row.TranslateToAsync(-360.0, 0.0, 140, Easing.CubicIn),
+                        row.FadeToAsync(0.0, 140, Easing.CubicIn));
+
+                    AndroidRenderLayerHelper.SetHardwareLayer(row, false);
+                    row.TranslationX = 0.0;
+                    row.Opacity = 1.0;
+
+                    if (vm.RemoveFromQueueCommand.CanExecute(item))
+                    {
+                        vm.RemoveFromQueueCommand.Execute(item);
+                    }
+                }
+                else
+                {
+                    await System.Threading.Tasks.Task.WhenAll(
+                        row.TranslateToAsync(0.0, 0.0, 140, Easing.CubicOut),
+                        row.FadeToAsync(1.0, 140, Easing.CubicOut));
+
+                    AndroidRenderLayerHelper.SetHardwareLayer(row, false);
+                }
+                break;
         }
     }
 

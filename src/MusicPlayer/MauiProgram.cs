@@ -32,6 +32,7 @@ public static class MauiProgram
 #if ANDROID
         builder.Services.AddSingleton<IAudioPlayer, AndroidAudioPlayer>();
         builder.Services.AddSingleton<ITrackCoverExtractor, AndroidTrackCoverExtractor>();
+        builder.Services.AddSingleton<IMediaNotificationService, AndroidMediaNotificationService>();
 #endif
         builder.Services.AddSingleton<IPlaybackQueue, PlaybackQueue>();
         builder.Services.AddSingleton<IPlayerTransitionService, PlayerTransitionService>();

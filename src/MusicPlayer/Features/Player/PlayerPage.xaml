@@ -29,8 +29,13 @@
     <Grid>
         <Grid x:Name="PlayerRootGrid"
               RowDefinitions="Auto, *, Auto, Auto"
-              Padding="{StaticResource PlayerScreenPadding}"
-              Background="{StaticResource PlayerBackgroundGradientBrush}">
+              Padding="{StaticResource PlayerScreenPadding}">
+            <Grid.Background>
+                <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+                    <GradientStop Color="{Binding DominantGradientColor}" Offset="0.0" />
+                    <GradientStop Color="{StaticResource BgGradientEnd}" Offset="0.72" />
+                </LinearGradientBrush>
+            </Grid.Background>
 
             <!-- 1. Верхняя панель -->
             <components:PlayerHeaderView x:Name="HeaderSection"

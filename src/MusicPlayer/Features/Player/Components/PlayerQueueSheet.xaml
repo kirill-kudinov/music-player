@@ -74,6 +74,9 @@
                             StrokeThickness="1"
                             Stroke="Transparent"
                             BackgroundColor="Transparent">
+                        <Border.GestureRecognizers>
+                            <PanGestureRecognizer PanUpdated="OnRowSwipePanUpdated" />
+                        </Border.GestureRecognizers>
                         <Border.StrokeShape>
                             <RoundRectangle CornerRadius="14" />
                         </Border.StrokeShape>
@@ -86,8 +89,8 @@
                             </DataTrigger>
                         </Border.Triggers>
 
-                        <Grid ColumnDefinitions="*, 36, 44"
-                              ColumnSpacing="4"
+                        <Grid ColumnDefinitions="*, 44"
+                              ColumnSpacing="8"
                               VerticalOptions="Center">
 
                             <!-- Нажатие на трек (обложка + название + исполнитель) запускает его воспроизведение -->
@@ -128,29 +131,8 @@
                                 </Grid>
                             </Grid>
 
-                            <!-- Кнопка «Три точки» -->
-                            <Border Grid.Column="1"
-                                    WidthRequest="36"
-                                    HeightRequest="44"
-                                    BackgroundColor="Transparent"
-                                    StrokeThickness="0"
-                                    VerticalOptions="Center">
-                                <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Tapped="OnQueueItemMoreTapped"
-                                                          CommandParameter="{Binding .}" />
-                                </Border.GestureRecognizers>
-
-                                <Image Source="track_more_vert.png"
-                                       WidthRequest="20"
-                                       HeightRequest="20"
-                                       Aspect="AspectFit"
-                                       HorizontalOptions="Center"
-                                       VerticalOptions="Center"
-                                       InputTransparent="True" />
-                            </Border>
-
                             <!-- Ручка перетаскивания (2 горизонтальные полоски =) для перемещения вверх/вниз -->
-                            <Grid Grid.Column="2"
+                            <Grid Grid.Column="1"
                                   WidthRequest="44"
                                   HeightRequest="50"
                                   BackgroundColor="Transparent"
