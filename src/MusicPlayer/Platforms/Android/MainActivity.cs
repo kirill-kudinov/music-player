@@ -19,7 +19,7 @@ public class MainActivity : MauiAppCompatActivity
     {
         base.OnCreate(savedInstanceState);
 
-        if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu &&
+        if (System.OperatingSystem.IsAndroidVersionAtLeast(33) &&
             ContextCompat.CheckSelfPermission(this, Manifest.Permission.PostNotifications) != Permission.Granted)
         {
             ActivityCompat.RequestPermissions(

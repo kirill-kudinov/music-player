@@ -3,14 +3,19 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
+using Microsoft.Maui.Storage;
 using MusicPlayer.Core.AudioTracks;
 using MusicPlayer.Core.Primitives;
 
 namespace MusicPlayer.Features.Importer;
 
-public sealed class TrackStorage(TrackStorageSettings trackStorageSettings)
+public sealed class TrackStorage
 {
+    private readonly TrackStorageSettings _settings;
     private readonly HashSet<string> _excludedPaths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _excludedUris = new(StringComparer.OrdinalIgnoreCase);
+    private readonly string _excludedUrisFilePath = Path.Combine(FileSystem.Current.AppDataDirectory, "excluded_tracks.txt");
+    private readonly object _syncLock = new();
 
     /// <summary>
     /// Событие вызывается сразу после успешного сохранения нового трека в хранилище плеера.
@@ -21,6 +26,12 @@ public sealed class TrackStorage(TrackStorageSettings trackStorageSettings)
     /// Событие вызывается при удалении трека из библиотеки плеера.
     /// </summary>
     public event EventHandler<string>? TrackRemoved;
+
+    public TrackStorage(TrackStorageSettings trackStorageSettings)
+    {
+        _settings = trackStorageSettings;
+        LoadExcludedUris();
+    }
 
     public async Task<Result<string>> AddTrackAsync(string relativePath, Stream content)
     {
@@ -35,7 +46,7 @@ public sealed class TrackStorage(TrackStorageSettings trackStorageSettings)
             if (string.IsNullOrWhiteSpace(safeName))
                 return Result.Fail(ImportErrors.PathIsEmpty);
 
-            string fullPath = Path.GetFullPath(Path.Combine(trackStorageSettings.BaseDirectory, safeName));
+            string fullPath = Path.GetFullPath(Path.Combine(_settings.BaseDirectory, safeName));
             string? directoryPath = Path.GetDirectoryName(fullPath);
 
             if (!string.IsNullOrEmpty(directoryPath) && !Directory.Exists(directoryPath))
@@ -57,7 +68,11 @@ public sealed class TrackStorage(TrackStorageSettings trackStorageSettings)
                 await destinationStream.FlushAsync();
             }
 
-            _excludedPaths.Remove(fullPath);
+            lock (_syncLock)
+            {
+                _excludedPaths.Remove(fullPath);
+            }
+
             TrackAdded?.Invoke(this, fullPath);
 
             return Result.Ok(fullPath);
@@ -73,7 +88,7 @@ public sealed class TrackStorage(TrackStorageSettings trackStorageSettings)
         AddTrackAsync(relativePath, (Stream)content);
 
     /// <summary>
-    /// Удаляет трек из библиотеки плеера (внутреннего кэша приложения),
+    /// Удаляет трек из библиотеки плеера (внутреннего кэша или индекса),
     /// не затрагивая исходный файл в памяти телефона пользователя.
     /// </summary>
     public void RemoveTrackFromPlayer(Uri? contentUri)
@@ -81,28 +96,41 @@ public sealed class TrackStorage(TrackStorageSettings trackStorageSettings)
         if (contentUri is null)
             return;
 
-        string rawPath = (contentUri.IsAbsoluteUri && contentUri.IsFile) ? contentUri.LocalPath : contentUri.OriginalString;
-        if (string.IsNullOrWhiteSpace(rawPath))
-            return;
-
-        string normalizedPath = Path.GetFullPath(rawPath);
-        _excludedPaths.Add(normalizedPath);
-
-        try
+        lock (_syncLock)
         {
-            string baseDirFull = Path.GetFullPath(trackStorageSettings.BaseDirectory);
-            if (normalizedPath.StartsWith(baseDirFull, StringComparison.OrdinalIgnoreCase) &&
-                File.Exists(normalizedPath))
+            if (_excludedUris.Add(contentUri.OriginalString))
             {
-                File.Delete(normalizedPath);
+                SaveExcludedUris();
             }
         }
-        catch (Exception ex)
+
+        if (contentUri.IsAbsoluteUri && contentUri.IsFile)
         {
-            Debug.WriteLine($"[TrackStorage] Не удалось удалить внутреннюю копию файла: {ex.Message}");
+            string normalizedPath = Path.GetFullPath(contentUri.LocalPath);
+            lock (_syncLock)
+            {
+                _excludedPaths.Add(normalizedPath);
+            }
+
+            try
+            {
+                string baseDirFull = Path.GetFullPath(_settings.BaseDirectory);
+                if (normalizedPath.StartsWith(baseDirFull, StringComparison.OrdinalIgnoreCase) &&
+                    File.Exists(normalizedPath))
+                {
+                    File.Delete(normalizedPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[TrackStorage] Не удалось удалить внутреннюю копию файла: {ex.Message}");
+            }
+
+            TrackRemoved?.Invoke(this, normalizedPath);
+            return;
         }
 
-        TrackRemoved?.Invoke(this, normalizedPath);
+        TrackRemoved?.Invoke(this, contentUri.OriginalString);
     }
 
     public bool IsExcluded(string filePath)
@@ -111,15 +139,29 @@ public sealed class TrackStorage(TrackStorageSettings trackStorageSettings)
             return false;
 
         string normalizedPath = Path.GetFullPath(filePath);
-        return _excludedPaths.Contains(normalizedPath);
+        lock (_syncLock)
+        {
+            return _excludedPaths.Contains(normalizedPath);
+        }
+    }
+
+    public bool IsExcludedUri(Uri? contentUri)
+    {
+        if (contentUri is null)
+            return false;
+
+        lock (_syncLock)
+        {
+            return _excludedUris.Contains(contentUri.OriginalString);
+        }
     }
 
     public List<AudioTrack> GetAllTracks()
     {
-        if (!Directory.Exists(trackStorageSettings.BaseDirectory))
+        if (!Directory.Exists(_settings.BaseDirectory))
             return [];
 
-        string[] availableFiles = Directory.GetFiles(trackStorageSettings.BaseDirectory);
+        string[] availableFiles = Directory.GetFiles(_settings.BaseDirectory);
         if (availableFiles.Length == 0)
             return [];
 
@@ -138,5 +180,44 @@ public sealed class TrackStorage(TrackStorageSettings trackStorageSettings)
         }
 
         return audioTracks;
+    }
+
+    private void LoadExcludedUris()
+    {
+        try
+        {
+            if (!File.Exists(_excludedUrisFilePath))
+                return;
+
+            foreach (string line in File.ReadAllLines(_excludedUrisFilePath))
+            {
+                if (!string.IsNullOrWhiteSpace(line))
+                {
+                    _excludedUris.Add(line.Trim());
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[TrackStorage] Failed to load excluded URIs: {ex.Message}");
+        }
+    }
+
+    private void SaveExcludedUris()
+    {
+        try
+        {
+            string? dir = Path.GetDirectoryName(_excludedUrisFilePath);
+            if (!string.IsNullOrEmpty(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+
+            File.WriteAllLines(_excludedUrisFilePath, _excludedUris);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[TrackStorage] Failed to save excluded URIs: {ex.Message}");
+        }
     }
 }

@@ -177,8 +177,8 @@ public partial class PlaylistTrackOptionsBottomSheet : ContentView
 
     private static async Task PlayRowTapFeedbackAsync(VisualElement row)
     {
-        await row.ScaleTo(0.97, 60, Easing.CubicOut);
-        await row.ScaleTo(1.0, 80, Easing.CubicIn);
+        await row.ScaleToAsync(0.97, 60, Easing.CubicOut);
+        await row.ScaleToAsync(1.0, 80, Easing.CubicIn);
     }
 
     private static void ExecuteCommandIfPossible(ICommand? command)

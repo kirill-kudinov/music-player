@@ -195,9 +195,7 @@ public sealed class MediaPlaybackForegroundService : Service
             .SetMediaSession(_mediaSession!.SessionToken)!
             .SetShowActionsInCompactView(0, 1, 2)!;
 
-        Notification.Builder builder = Build.VERSION.SdkInt >= BuildVersionCodes.O
-            ? new Notification.Builder(this, ChannelId)
-            : new Notification.Builder(this);
+        var builder = new Notification.Builder(this, ChannelId);
 
         builder
             .SetContentTitle(track.Title)

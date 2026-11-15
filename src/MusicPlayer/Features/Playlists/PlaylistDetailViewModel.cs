@@ -30,6 +30,7 @@ public sealed partial class PlaylistDetailViewModel : ObservableObject, IQueryAt
 
     private readonly IPlaylistRepository _repository;
     private readonly TrackStorage _trackStorage;
+    private readonly IMediaStoreAudioScanner? _mediaStoreScanner;
     private readonly ITrackCoverExtractor _coverExtractor;
     private readonly IPlaybackQueue _playbackQueue;
     private readonly IAudioPlayer _audioPlayer;
@@ -83,10 +84,12 @@ public sealed partial class PlaylistDetailViewModel : ObservableObject, IQueryAt
         ITrackCoverExtractor coverExtractor,
         IPlaybackQueue playbackQueue,
         IAudioPlayer audioPlayer,
-        PlayerViewModel playerViewModel)
+        PlayerViewModel playerViewModel,
+        IMediaStoreAudioScanner? mediaStoreScanner = null)
     {
         _repository = repository;
         _trackStorage = trackStorage;
+        _mediaStoreScanner = mediaStoreScanner;
         _coverExtractor = coverExtractor;
         _playbackQueue = playbackQueue;
         _audioPlayer = audioPlayer;
@@ -209,6 +212,17 @@ public sealed partial class PlaylistDetailViewModel : ObservableObject, IQueryAt
         {
 
             List<AudioTrack> allTracks = _trackStorage.GetAllTracks();
+            if (_mediaStoreScanner is not null)
+            {
+                var seen = new HashSet<string>(allTracks.Select(t => t.ContentUri.OriginalString), StringComparer.OrdinalIgnoreCase);
+                foreach (AudioTrack msTrack in _mediaStoreScanner.CachedTracks)
+                {
+                    if (!_trackStorage.IsExcludedUri(msTrack.ContentUri) && seen.Add(msTrack.ContentUri.OriginalString))
+                    {
+                        allTracks.Add(msTrack);
+                    }
+                }
+            }
             List<SelectableTrackItemViewModel> result = [];
 
             foreach (AudioTrack track in allTracks)

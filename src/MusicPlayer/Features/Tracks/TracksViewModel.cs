@@ -11,6 +11,7 @@ using CommunityToolkit.Maui.Core;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Controls;
 using MusicPlayer.Core.AudioTracks;
 using MusicPlayer.Core.Playlists;
 using MusicPlayer.Core.Primitives;
@@ -29,8 +30,10 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
     private readonly IPlaybackQueue _playbackQueue;
     private readonly IAudioPlayer _audioPlayer;
     private readonly IPlaylistRepository _playlistRepository;
+    private readonly IMediaStoreAudioScanner? _mediaStoreScanner;
 
     private readonly List<TrackItemViewModel> _allTracks = [];
+    private readonly Dictionary<string, TrackItemViewModel> _tracksByKey = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _loadedPaths = new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim _loadGate = new(1, 1);
     private bool _isDisposed;
@@ -69,7 +72,8 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
         IPlaybackQueue playbackQueue,
         IAudioPlayer audioPlayer,
         PlayerViewModel playerViewModel,
-        IPlaylistRepository playlistRepository)
+        IPlaylistRepository playlistRepository,
+        IMediaStoreAudioScanner? mediaStoreScanner = null)
     {
         _storageSettings = storageSettings;
         _trackStorage = trackStorage;
@@ -78,10 +82,15 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
         _audioPlayer = audioPlayer;
         Player = playerViewModel;
         _playlistRepository = playlistRepository;
+        _mediaStoreScanner = mediaStoreScanner;
 
         _trackStorage.TrackAdded += OnStorageTrackAdded;
         _trackStorage.TrackRemoved += OnStorageTrackRemoved;
         _playlistRepository.TrackFavoriteChanged += OnRepositoryTrackFavoriteChanged;
+        if (_mediaStoreScanner is not null)
+        {
+            _mediaStoreScanner.TracksScanned += OnMediaStoreTracksScanned;
+        }
     }
 
     partial void OnSearchQueryChanged(string value)
@@ -98,19 +107,44 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
     {
         Player.Tick();
 
-        if (!Directory.Exists(_storageSettings.BaseDirectory))
-            return;
-
         if (!await _loadGate.WaitAsync(0))
             return;
 
         try
         {
+            if (_mediaStoreScanner is not null &&
+                _mediaStoreScanner.CachedTracks.Count == 0 &&
+                await _mediaStoreScanner.HasReadAudioPermissionAsync())
+            {
+                await _mediaStoreScanner.ScanDeviceAudioAsync();
+            }
+
             List<TrackItemViewModel> newlyLoaded = await Task.Run(() =>
             {
                 List<TrackItemViewModel> items = [];
 
-                foreach (string rawFilePath in Directory.EnumerateFiles(_storageSettings.BaseDirectory))
+                if (_mediaStoreScanner is not null)
+                {
+                    foreach (AudioTrack track in _mediaStoreScanner.CachedTracks)
+                    {
+                        if (_trackStorage.IsExcludedUri(track.ContentUri))
+                            continue;
+
+                        string uriKey = track.ContentUri.OriginalString;
+                        lock (_loadedPaths)
+                        {
+                            if (_loadedPaths.Contains(uriKey))
+                                continue;
+                        }
+
+                        ImageSource? cover = _coverExtractor.ExtractCover(track.ContentUri);
+                        items.Add(new TrackItemViewModel(track, cover));
+                    }
+                }
+
+                if (Directory.Exists(_storageSettings.BaseDirectory))
+                {
+                    foreach (string rawFilePath in Directory.EnumerateFiles(_storageSettings.BaseDirectory))
                 {
                     string filePath = Path.GetFullPath(rawFilePath);
                     if (_trackStorage.IsExcluded(filePath))
@@ -122,9 +156,10 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
                             continue;
                     }
 
-                    if (TryCreateTrackItem(filePath, out var trackItem))
-                    {
-                        items.Add(trackItem);
+                        if (TryCreateTrackItem(filePath, out var trackItem))
+                        {
+                            items.Add(trackItem);
+                        }
                     }
                 }
 
@@ -137,13 +172,16 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
                 {
                     foreach (var item in newlyLoaded)
                     {
-                        string path = Path.GetFullPath(item.Track.ContentUri.LocalPath);
+                        string path = (item.Track.ContentUri.IsAbsoluteUri && item.Track.ContentUri.IsFile)
+                            ? Path.GetFullPath(item.Track.ContentUri.LocalPath)
+                            : item.Track.ContentUri.OriginalString;
                         lock (_loadedPaths)
                         {
                             if (!_loadedPaths.Add(path))
                                 continue;
                         }
 
+                        _tracksByKey[path] = item;
                         _allTracks.Add(item);
                     }
 
@@ -212,7 +250,6 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
         _trackStorage.RemoveTrackFromPlayer(target.Track.ContentUri);
         await _playlistRepository.RemoveTrackFromEverywhereAsync(target.Track.ContentUri);
 
-        await ShowToastSafeAsync($"Трек «{target.Track.Title}» удалён");
     }
 
     [RelayCommand]
@@ -335,16 +372,18 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
         }
     }
 
+    private void OnMediaStoreTracksScanned(object? sender, IReadOnlyList<AudioTrack> scannedTracks)
+    {
+        _ = LoadTracksAsync();
+    }
+
     private void OnRepositoryTrackFavoriteChanged(object? sender, TrackFavoriteChangedEventArgs e)
     {
         RunOnMainThread(() =>
         {
-            foreach (TrackItemViewModel item in _allTracks)
+            if (_tracksByKey.TryGetValue(GetTrackKey(e.ContentUri), out TrackItemViewModel? item))
             {
-                if (AreSameTrackUri(item.Track.ContentUri, e.ContentUri))
-                {
-                    item.Track.SetFavorite(e.IsFavorite);
-                }
+                item.Track.SetFavorite(e.IsFavorite);
             }
         });
     }
@@ -371,7 +410,8 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
                     _loadedPaths.Add(filePath);
                 }
 
-                _allTracks.Add(newItem);
+                _tracksByKey[filePath] = newItem;
+            _allTracks.Add(newItem);
 
                 if (MatchesFilter(newItem, SearchQuery))
                 {
@@ -410,20 +450,16 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
 
     private void RemoveTrackItemFromCollections(Uri contentUri)
     {
-        if (contentUri.IsAbsoluteUri && contentUri.IsFile)
+        string key = GetTrackKey(contentUri);
+        lock (_loadedPaths)
         {
-            lock (_loadedPaths)
-            {
-                _loadedPaths.Remove(Path.GetFullPath(contentUri.LocalPath));
-            }
+            _loadedPaths.Remove(key);
+            _loadedPaths.Remove(contentUri.OriginalString);
         }
 
-        for (int i = _allTracks.Count - 1; i >= 0; i--)
+        if (_tracksByKey.Remove(key, out TrackItemViewModel? removed))
         {
-            if (AreSameTrackUri(_allTracks[i].Track.ContentUri, contentUri))
-            {
-                _allTracks.RemoveAt(i);
-            }
+            _allTracks.Remove(removed);
         }
 
         for (int i = FilteredTracks.Count - 1; i >= 0; i--)
@@ -477,6 +513,9 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
                (item.Track.Artist?.Contains(trimmed, StringComparison.OrdinalIgnoreCase) ?? false);
     }
 
+    private static string GetTrackKey(Uri uri) =>
+        (uri.IsAbsoluteUri && uri.IsFile) ? Path.GetFullPath(uri.LocalPath) : uri.OriginalString;
+
     private static bool AreSameTrackUri(Uri left, Uri right)
     {
         if (left == right)
@@ -527,6 +566,10 @@ public sealed partial class TracksViewModel : ObservableObject, IDisposable
         _trackStorage.TrackAdded -= OnStorageTrackAdded;
         _trackStorage.TrackRemoved -= OnStorageTrackRemoved;
         _playlistRepository.TrackFavoriteChanged -= OnRepositoryTrackFavoriteChanged;
+        if (_mediaStoreScanner is not null)
+        {
+            _mediaStoreScanner.TracksScanned -= OnMediaStoreTracksScanned;
+        }
         _loadGate.Dispose();
     }
 }

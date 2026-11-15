@@ -11,6 +11,7 @@ public sealed class Playlist
     public const string FavoritesTitle = "Избранное";
 
     private readonly List<AudioTrack> _tracks = [];
+    private readonly HashSet<string> _trackUris = new(StringComparer.OrdinalIgnoreCase);
 
     public Guid Id { get; }
     public string Title { get; private set; }
@@ -35,7 +36,7 @@ public sealed class Playlist
         {
             foreach (AudioTrack track in tracks)
             {
-                if (!ContainsTrack(track.ContentUri))
+                if (_trackUris.Add(GetUriKey(track.ContentUri)))
                 {
                     _tracks.Add(track);
                 }
@@ -134,7 +135,7 @@ public sealed class Playlist
 
     public Result<Unit> AddTrack(AudioTrack track)
     {
-        if (ContainsTrack(track.ContentUri))
+        if (!_trackUris.Add(GetUriKey(track.ContentUri)))
             return Result.Fail(PlaylistErrors.TrackAlreadyInPlaylist);
 
         _tracks.Add(track);
@@ -147,23 +148,27 @@ public sealed class Playlist
         if (index < 0)
             return Result.Fail(PlaylistErrors.TrackNotInPlaylist);
 
+        _trackUris.Remove(GetUriKey(_tracks[index].ContentUri));
         _tracks.RemoveAt(index);
         return Result.Ok();
     }
 
-    public bool ContainsTrack(Uri contentUri) => FindTrackIndex(contentUri) >= 0;
+    public bool ContainsTrack(Uri? contentUri) => contentUri is not null && _trackUris.Contains(GetUriKey(contentUri));
 
     public void ReplaceTracks(IEnumerable<AudioTrack> tracks)
     {
         _tracks.Clear();
+        _trackUris.Clear();
         foreach (AudioTrack track in tracks)
         {
-            if (!ContainsTrack(track.ContentUri))
+            if (_trackUris.Add(GetUriKey(track.ContentUri)))
             {
                 _tracks.Add(track);
             }
         }
     }
+
+    private static string GetUriKey(Uri uri) => uri.OriginalString;
 
     private int FindTrackIndex(Uri? contentUri)
     {
