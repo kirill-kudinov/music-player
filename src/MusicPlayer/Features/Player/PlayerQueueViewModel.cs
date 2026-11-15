@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Maui.Controls;
 using MusicPlayer.Core.AudioTracks;
+using MusicPlayer.Core.Primitives;
 using MusicPlayer.Features.Playlists;
 using MusicPlayer.Playback;
 
@@ -18,7 +19,7 @@ public sealed partial class PlayerQueueViewModel(
     private Action<AudioTrack>? _removeTrackCallback;
     private Action? _queueReorderedCallback;
 
-    public ObservableCollection<QueueTrackItemViewModel> Tracks { get; } = [];
+    public BatchObservableCollection<QueueTrackItemViewModel> Tracks { get; } = [];
 
     [ObservableProperty]
     private bool _isOpen;
@@ -101,7 +102,7 @@ public sealed partial class PlayerQueueViewModel(
         IReadOnlyList<AudioTrack> tracks = queue.Tracks;
         int currentIndex = queue.CurrentIndex;
 
-        Tracks.Clear();
+        List<QueueTrackItemViewModel> items = new(tracks.Count);
         TimeSpan totalDuration = TimeSpan.Zero;
 
         for (int i = 0; i < tracks.Count; i++)
@@ -109,11 +110,51 @@ public sealed partial class PlayerQueueViewModel(
             AudioTrack track = tracks[i];
             totalDuration += track.Duration;
             ImageSource? cover = coverExtractor.ExtractCover(track.ContentUri);
-            Tracks.Add(new QueueTrackItemViewModel(track, cover, i == currentIndex));
+            items.Add(new QueueTrackItemViewModel(track, cover, i == currentIndex));
         }
+
+        Tracks.ReplaceAll(items);
 
         TrackCountText = PlaylistFormatting.FormatTrackCount(tracks.Count);
         TotalDurationText = FormatTotalDuration(totalDuration);
+    }
+
+    public void ReorderToMatchQueue()
+    {
+        IReadOnlyList<AudioTrack> targetOrder = queue.Tracks;
+        if (Tracks.Count != targetOrder.Count)
+        {
+            Refresh();
+            return;
+        }
+
+        for (int targetIndex = 0; targetIndex < targetOrder.Count; targetIndex++)
+        {
+            AudioTrack targetTrack = targetOrder[targetIndex];
+            if (ReferenceEquals(Tracks[targetIndex].Track, targetTrack))
+                continue;
+
+            int currentIndex = -1;
+            for (int j = targetIndex + 1; j < Tracks.Count; j++)
+            {
+                if (ReferenceEquals(Tracks[j].Track, targetTrack) ||
+                    Tracks[j].Track.ContentUri == targetTrack.ContentUri)
+                {
+                    currentIndex = j;
+                    break;
+                }
+            }
+
+            if (currentIndex < 0)
+            {
+                Refresh();
+                return;
+            }
+
+            Tracks.Move(currentIndex, targetIndex);
+        }
+
+        UpdateCurrentMarkers();
     }
 
     public void UpdateCurrentMarkers()
